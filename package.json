@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "nodemon server-authenticated.js",
+    "start": "node server-authenticated.js",
+    "start-old": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,14 +14,18 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@shopify/admin-api-client": "^1.1.1",
     "@shopify/polaris": "^13.9.5",
     "@shopify/shopify-api": "^11.14.1",
+    "@shopify/shopify-app-express": "^5.0.20",
+    "@shopify/shopify-app-session-storage-sqlite": "^4.0.20",
     "axios": "^1.11.0",
     "body-parser": "^2.2.0",
     "dotenv": "^17.2.1",
     "escape-html": "^1.0.3",
     "express": "^5.1.0",
     "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.2",
     "libphonenumber-js": "^1.12.13",
     "ngrok": "^5.0.0-beta.2",
     "sqlite3": "^5.1.7",
@@ -26,6 +33,7 @@
     "validator": "^13.15.15"
   },
   "devDependencies": {
-    "@types/sqlite3": "^3.1.11"
+    "@types/sqlite3": "^3.1.11",
+    "nodemon": "^3.1.10"
   }
 }
