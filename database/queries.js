@@ -349,31 +349,44 @@ static disableCustomer(customerId) {
   
   static createOrUpdateShop(shopDomain, accessToken, shopData = {}) {
     return new Promise((resolve, reject) => {
+      // First, let's try INSERT OR REPLACE which is more reliable in SQLite
       const query = `
-        INSERT INTO shops (shop_domain, access_token, shop_name, email, phone)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(shop_domain) 
-        DO UPDATE SET 
-          access_token = ?,
-          shop_name = ?,
-          email = ?,
-          phone = ?,
-          updated_at = CURRENT_TIMESTAMP
+        INSERT OR REPLACE INTO shops (
+          shop_domain, 
+          access_token, 
+          shop_name, 
+          email, 
+          phone,
+          is_active,
+          plan,
+          monthly_message_count,
+          message_limit,
+          total_revenue_generated,
+          created_at,
+          updated_at
+        ) VALUES (
+          ?, ?, ?, ?, ?, 1, 'free', 0, 50, 0,
+          COALESCE((SELECT created_at FROM shops WHERE shop_domain = ?), CURRENT_TIMESTAMP),
+          CURRENT_TIMESTAMP
+        )
       `;
       
+      console.log('💾 Executing shop upsert query for:', shopDomain);
       db.run(query, [
         shopDomain,
         accessToken,
         shopData.shop_name || null,
         shopData.email || null,
         shopData.phone || null,
-        accessToken,
-        shopData.shop_name || null,
-        shopData.email || null,
-        shopData.phone || null
+        shopDomain  // For the COALESCE subquery
       ], function(err) {
-        if (err) reject(err);
-        else resolve(this.lastID || this.changes);
+        if (err) {
+          console.error('❌ Database error in createOrUpdateShop:', err);
+          reject(err);
+        } else {
+          console.log(`✅ Shop saved successfully: ${shopDomain} (lastID: ${this.lastID}, changes: ${this.changes})`);
+          resolve(this.lastID || this.changes);
+        }
       });
     });
   }
@@ -731,6 +744,72 @@ static disableCustomer(customerId) {
         if (err) reject(err);
         else resolve();
       });
+    });
+  }
+
+  // ========== UNINSTALL CLEANUP METHODS ==========
+
+  static deleteShop(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM shops WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopOrders(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM orders WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted orders for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopCustomers(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM customers WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted customers for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopMessages(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM messages WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted messages for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
     });
   }
 }
