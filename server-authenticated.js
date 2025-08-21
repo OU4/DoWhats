@@ -1,5 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const path = require('path');
 const { db, initializeDatabase } = require('./database');
 const DatabaseQueries = require('./database/queries');
 const { body, query, param, validationResult } = require('express-validator');
@@ -37,12 +38,39 @@ if (process.env.TWILIO_ACCOUNT_SID &&
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Serve static files from public directory
+app.use('/public', express.static(path.join(__dirname, 'public')));
+
 // Add ngrok bypass headers FIRST - CRITICAL for OAuth callback
 app.use((req, res, next) => {
   // Bypass ngrok warning page - CRITICAL for callbacks
   res.setHeader('ngrok-skip-browser-warning', 'true');
   res.setHeader('ngrok-skip-browser-warning', 'any');
   req.headers['ngrok-skip-browser-warning'] = 'true';
+  
+  // CRITICAL: Fix embedded app cookie issues for iframe loading
+  if (req.path === '/app' || req.path.startsWith('/app?')) {
+    // Remove X-Frame-Options to allow iframe embedding
+    res.removeHeader('X-Frame-Options');
+    
+    // Set CSP to allow Shopify iframe embedding
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://*.shopify.com https://admin.shopify.com");
+    
+    // Set SameSite=None for cookies to work in third-party context (iframe)
+    const originalSetHeader = res.setHeader.bind(res);
+    res.setHeader = function(name, value) {
+      if (name.toLowerCase() === 'set-cookie') {
+        if (Array.isArray(value)) {
+          value = value.map(cookie => cookie.includes('SameSite') ? cookie : cookie + '; SameSite=None; Secure');
+        } else {
+          value = value.includes('SameSite') ? value : value + '; SameSite=None; Secure';
+        }
+      }
+      return originalSetHeader(name, value);
+    };
+    
+    console.log('🍪 Setting embedded app iframe headers for:', req.path);
+  }
   
   // For OAuth callbacks, add additional ngrok bypass headers
   if (req.path.includes('/auth/callback')) {
@@ -82,9 +110,77 @@ app.use('/auth/callback', (req, res, next) => {
 // Add Shopify middleware
 app.use(shopify.cspHeaders());
 
+// Add comprehensive OAuth flow logging
+app.use('/auth', (req, res, next) => {
+  console.log('🔐 AUTH MIDDLEWARE - Request received:', {
+    method: req.method,
+    url: req.originalUrl,
+    query: req.query,
+    timestamp: new Date().toISOString()
+  });
+  next();
+});
+
 // Apply Shopify auth middleware properly
 app.use('/auth', shopify.auth.begin());
+
+// Add pre-callback logging
+app.use('/auth/callback', (req, res, next) => {
+  console.log('🔗 PRE-CALLBACK - Before Shopify auth callback:', {
+    method: req.method,
+    url: req.originalUrl,
+    query: req.query,
+    hasCode: !!req.query.code,
+    hasState: !!req.query.state,
+    hasHmac: !!req.query.hmac,
+    shop: req.query.shop,
+    timestamp: new Date().toISOString()
+  });
+  next();
+});
+
 app.use('/auth/callback', shopify.auth.callback());
+
+// Add post-callback logging
+app.use('/auth/callback', (req, res, next) => {
+  console.log('🎉 POST-CALLBACK - After Shopify auth callback:', {
+    hasSessionLocals: !!res.locals.shopify,
+    hasSession: !!res.locals.shopify?.session,
+    sessionShop: res.locals.shopify?.session?.shop,
+    sessionId: res.locals.shopify?.session?.id,
+    hasAccessToken: !!res.locals.shopify?.session?.accessToken,
+    timestamp: new Date().toISOString()
+  });
+  next();
+});
+
+// Add middleware to save shop after successful OAuth
+app.use('/auth/callback', async (req, res, next) => {
+  // This runs after Shopify's auth callback
+  const shop = req.query.shop;
+  
+  if (shop && res.locals.shopify && res.locals.shopify.session) {
+    const session = res.locals.shopify.session;
+    console.log('🎉 OAuth completed successfully, saving shop to database:', shop);
+    
+    try {
+      await DatabaseQueries.createOrUpdateShop(
+        session.shop,
+        session.accessToken,
+        {
+          shop_name: session.shop.split('.')[0],
+          email: null,
+          phone: null
+        }
+      );
+      console.log('✅ Shop saved to database after OAuth');
+    } catch (error) {
+      console.error('❌ Failed to save shop after OAuth:', error);
+    }
+  }
+  
+  next();
+});
 
 // Skip Shopify session validation for debug/test routes only
 app.use((req, res, next) => {
@@ -205,6 +301,62 @@ app.use((error, req, res, next) => {
     });
   }
   next(error);
+});
+
+// Debug route to check Partner Dashboard configuration
+app.get('/debug/partner-config', (req, res) => {
+  const currentUrl = `${req.protocol}://${req.get('host')}`;
+  
+  res.send(`
+    <h1>🔧 Partner Dashboard Configuration Check</h1>
+    
+    <h2>Current Server Configuration:</h2>
+    <ul>
+      <li><strong>Current URL:</strong> ${currentUrl}</li>
+      <li><strong>SHOPIFY_APP_URL:</strong> ${process.env.SHOPIFY_APP_URL || 'Not set'}</li>
+      <li><strong>API Key:</strong> ${process.env.SHOPIFY_API_KEY || 'Not set'}</li>
+    </ul>
+    
+    <h2>✅ Correct Partner Dashboard Settings:</h2>
+    <div style="background: #f0f0f0; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <h3>App URL:</h3>
+      <code style="background: white; padding: 10px; display: block; margin: 10px 0;">${process.env.SHOPIFY_APP_URL}/app</code>
+      
+      <h3>Allowed redirection URLs (add ALL of these):</h3>
+      <ul style="background: white; padding: 10px; margin: 10px 0;">
+        <li><code>${process.env.SHOPIFY_APP_URL}/auth/callback</code></li>
+        <li><code>${process.env.SHOPIFY_APP_URL}/auth/success</code></li>
+        <li><code>${process.env.SHOPIFY_APP_URL}/app</code></li>
+        <li><code>${process.env.SHOPIFY_APP_URL}/</code></li>
+        <li><code>${process.env.SHOPIFY_APP_URL}/exitiframe</code></li>
+      </ul>
+    </div>
+    
+    <h2>🔍 Common Issues:</h2>
+    <ol>
+      <li><strong>"There's no page at this address" error:</strong>
+        <ul>
+          <li>App URL in Partner Dashboard doesn't match server route</li>
+          <li>Missing /app at the end of the App URL</li>
+          <li>Not all redirect URLs are whitelisted</li>
+        </ul>
+      </li>
+      <li><strong>OAuth errors:</strong>
+        <ul>
+          <li>Redirect URLs don't match exactly (check for trailing slashes)</li>
+          <li>Using http instead of https (or vice versa)</li>
+          <li>ngrok URL changed but Partner Dashboard not updated</li>
+        </ul>
+      </li>
+    </ol>
+    
+    <h2>🧪 Test Links:</h2>
+    <ul>
+      <li><a href="/app?shop=dowhatss1.myshopify.com">Test App Route</a></li>
+      <li><a href="/auth?shop=dowhatss1.myshopify.com">Test OAuth Flow</a></li>
+      <li><a href="/debug">General Debug Info</a></li>
+    </ul>
+  `);
 });
 
 // Body parsing middleware - exclude webhook routes to prevent stream conflicts
@@ -476,8 +628,58 @@ app.get('/test-oauth', async (req, res) => {
   }
 });
 
+// Manual install route to save shop to database (for testing)
+app.get('/install-shop', async (req, res) => {
+  const shop = req.query.shop || 'dowhatss1.myshopify.com';
+  
+  if (!shop || !ValidationUtils.isValidShopDomain(shop)) {
+    return res.status(400).json({ error: 'Invalid shop domain' });
+  }
+  
+  try {
+    // Check session storage for existing session
+    const { sessionStorage } = require('./shopify.app.config');
+    const sessionId = `offline_${shop}`;
+    const session = await sessionStorage.loadSession(sessionId);
+    
+    if (!session || !session.accessToken) {
+      return res.json({
+        error: 'No session found',
+        message: 'Please install the app through Shopify first',
+        installUrl: `/auth?shop=${shop}`
+      });
+    }
+    
+    // Save to our custom database
+    await DatabaseQueries.createOrUpdateShop(
+      shop,
+      session.accessToken,
+      {
+        shop_name: shop.split('.')[0],
+        email: null,
+        phone: null
+      }
+    );
+    
+    // Verify it was saved
+    const savedShop = await DatabaseQueries.getShop(shop);
+    
+    res.json({
+      success: true,
+      message: 'Shop saved to database',
+      shop: shop,
+      savedShop: savedShop,
+      redirect: `/app?shop=${shop}`
+    });
+    
+  } catch (error) {
+    console.error('Error saving shop:', error);
+    res.status(500).json({ error: 'Failed to save shop', details: error.message });
+  }
+});
+
 // Add session debugging middleware
-app.use('/app', (req, res, next) => {
+app.use('/app', async (req, res, next) => {
   console.log('🔍 APP ROUTE DEBUG:', {
     method: req.method,
     url: req.originalUrl,
@@ -485,96 +687,416 @@ app.use('/app', (req, res, next) => {
     sessionLocals: res.locals.shopify || 'No session locals',
     cookies: req.headers.cookie || 'No cookies'
   });
+  
+  // Check if we have a valid session and save shop if needed
+  if (res.locals.shopify && res.locals.shopify.session) {
+    const session = res.locals.shopify.session;
+    const shop = session.shop;
+    
+    try {
+      // Check if shop exists in our database
+      const existingShop = await DatabaseQueries.getShop(shop);
+      if (!existingShop) {
+        console.log('📝 Shop not in database, saving now:', shop);
+        await DatabaseQueries.createOrUpdateShop(
+          shop,
+          session.accessToken,
+          {
+            shop_name: shop.split('.')[0],
+            email: null,
+            phone: null
+          }
+        );
+        console.log('✅ Shop saved to database');
+      }
+    } catch (error) {
+      console.error('❌ Error checking/saving shop:', error);
+    }
+  }
+  
   next();
 });
 
+// Add bounce page route
+app.get('/bounce', (req, res) => {
+  // Allow this page to be embedded in Shopify iframe
+  res.removeHeader('Content-Security-Policy');
+  res.setHeader('X-Frame-Options', 'ALLOWALL');
+  res.sendFile(path.join(__dirname, 'public', 'bounce.html'));
+});
+
 // Authenticated app route (for Shopify admin access)
-app.get('/app', 
-  shopify.ensureInstalledOnShop(),
-  async (req, res) => {
-    // For embedded apps, we need to validate session tokens from the id_token parameter
-    const idToken = req.query.id_token;
-    const shop = req.query.shop;
-    
-    console.log('🔍 App route - Token validation:', {
-      hasIdToken: !!idToken,
-      shop: shop,
-      embedded: req.query.embedded
+app.get('/app', async (req, res, next) => {
+  const shop = req.query.shop;
+  const embedded = req.query.embedded;
+  const host = req.query.host;
+  
+  console.log('🔍 APP ROUTE DEBUG:', {
+    method: req.method,
+    url: req.originalUrl,
+    query: req.query,
+    sessionLocals: res.locals.shopify ? 'Has session locals' : 'No session locals',
+    cookies: req.headers.cookie ? 'Has cookies' : 'No cookies'
+  });
+  
+  console.log('🔍 App route accessed:', {
+    shop,
+    hasIdToken: !!req.query.id_token,
+    hasSession: !!res.locals.shopify?.session,
+    embedded: embedded,
+    host: host
+  });
+  
+  // If no shop parameter, show error with detailed debugging
+  if (!shop) {
+    console.error('❌ No Shop Parameter DEBUG:', {
+      query: req.query,
+      url: req.originalUrl,
+      referer: req.headers.referer,
+      userAgent: req.headers['user-agent'],
+      cookies: req.headers.cookie
     });
+    return res.send(`
+      <h1>❌ No Shop Parameter</h1>
+      <p>This app must be accessed through Shopify admin or with a shop parameter.</p>
+      <p><strong>URL:</strong> ${req.originalUrl}</p>
+      <p><strong>Query:</strong> ${JSON.stringify(req.query)}</p>
+      <p><strong>Referer:</strong> ${req.headers.referer || 'None'}</p>
+      <p><a href="/install">Go to Installation Page</a></p>
+    `);
+  }
+  
+  // Check if this is the initial redirect from Shopify (with hmac but no embedded flag)
+  if (req.query.hmac && !embedded) {
+    console.log('🔄 Initial Shopify redirect detected');
+    // Instead of bounce page, redirect directly with embedded flag
+    const redirectUrl = `/app?embedded=1&shop=${encodeURIComponent(shop)}&host=${encodeURIComponent(host)}`;
+    console.log('🔄 Redirecting to:', redirectUrl);
+    return res.redirect(redirectUrl);
+  }
+  
+  // For embedded app with id_token, try direct session handling first
+  if (embedded === '1' && req.query.id_token) {
+    console.log('📱 Embedded app with id_token detected');
     
-    // For embedded apps, extract session from id_token instead of traditional session validation
-    let session = null;
-    
-    if (idToken) {
-      try {
-        // Decode the session token to get shop info
-        const jwt = require('jsonwebtoken');
-        const decoded = jwt.decode(idToken);
-        console.log('🔍 Decoded JWT:', {
-          iss: decoded?.iss,
-          aud: decoded?.aud,
-          shop: shop
-        });
+    try {
+      // First check if we have the shop in our database
+      const shopData = await DatabaseQueries.getShop(shop);
+      
+      if (shopData && shopData.access_token) {
+        console.log('✅ Shop found in database, creating session with existing access token');
         
-        // Load the session from our database using the shop
-        const { sessionStorage } = require('./shopify.app.config');
-        const sessionId = `offline_${shop}`;
-        session = await sessionStorage.loadSession(sessionId);
-        
-        console.log('📦 Loaded session:', {
-          sessionId: sessionId,
-          hasSession: !!session,
-          accessToken: session?.accessToken ? '✅ Present' : '❌ Missing'
-        });
-        
-      } catch (error) {
-        console.error('❌ Error validating session token:', error.message);
-      }
-    }
-    
-    if (!session) {
-      console.error('❌ No valid session found');
-      return res.status(500).json({
-        error: 'No authenticated session found',
-        debug: {
+        // Create session with existing access token
+        const { Session } = require('@shopify/shopify-api');
+        const session = new Session({
+          id: `offline_${shop}`,
           shop: shop,
-          hasIdToken: !!idToken,
-          embedded: req.query.embedded
+          state: '',
+          isOnline: false,
+          accessToken: shopData.access_token,
+          scope: process.env.SHOPIFY_SCOPES || 'read_orders,write_orders,read_customers,write_customers'
+        });
+        
+        // Store session
+        const { sessionStorage } = require('./shopify.app.config');
+        await sessionStorage.storeSession(session);
+        res.locals.shopify = { session };
+        
+        console.log('✅ Session created from database access token');
+        
+        // Generate and send the admin page
+        console.log('📱 Generating admin dashboard...');
+        const adminPage = generateAdminPage(shop, shopData, session, req);
+        return res.send(adminPage);
+        
+      } else {
+        console.log('❌ Shop not found in database, using Shopify middleware for authentication');
+        
+        // Shop not in database, use Shopify's middleware for OAuth
+        return shopify.ensureInstalledOnShop()(req, res, async (err) => {
+          if (err) {
+            console.error('❌ Shopify auth middleware error:', err);
+            
+            // Clear any stale data before redirecting to OAuth
+            try {
+              await DatabaseQueries.deleteShop(shop);
+              await DatabaseQueries.deleteShopOrders(shop);
+              await DatabaseQueries.deleteShopCustomers(shop);
+              await DatabaseQueries.deleteShopMessages(shop);
+              console.log('🗑️ Cleaned up stale shop data');
+            } catch (cleanupError) {
+              console.error('Error cleaning up shop data:', cleanupError);
+            }
+            
+            // Redirect to OAuth
+            const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
+            return res.redirect(authUrl);
+          }
+          
+          // Auth succeeded through Shopify middleware
+          const session = res.locals.shopify?.session;
+          
+          if (!session) {
+            console.error('❌ No session after auth middleware');
+            const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
+            return res.redirect(authUrl);
+          }
+          
+          console.log('✅ Session validated through Shopify middleware:', {
+            shop: session.shop,
+            hasAccessToken: !!session.accessToken
+          });
+          
+          try {
+            // Save shop to database
+            await DatabaseQueries.createOrUpdateShop(
+              session.shop,
+              session.accessToken,
+              {
+                shop_name: session.shop.split('.')[0],
+                email: null,
+                phone: null
+              }
+            );
+            
+            const shopData = await DatabaseQueries.getShop(shop);
+            console.log('✅ Shop saved to database after OAuth');
+            
+            // Generate and send the admin page
+            console.log('📱 Generating admin dashboard...');
+            const adminPage = generateAdminPage(shop, shopData, session, req);
+            return res.send(adminPage);
+            
+          } catch (error) {
+            console.error('Error in app route:', error);
+            return res.status(500).send('Failed to load app');
+          }
+        });
+      }
+      
+    } catch (error) {
+      console.error('❌ Error in embedded app handling:', error);
+      
+      // Fallback to Shopify middleware
+      return shopify.ensureInstalledOnShop()(req, res, async (err) => {
+        if (err) {
+          const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
+          return res.redirect(authUrl);
         }
+        
+        const session = res.locals.shopify?.session;
+        if (!session) {
+          const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
+          return res.redirect(authUrl);
+        }
+        
+        const shopData = await DatabaseQueries.getShop(shop);
+        const adminPage = generateAdminPage(shop, shopData, session, req);
+        return res.send(adminPage);
       });
     }
-    // Use the session we loaded from the database
-    const authenticatedShop = session.shop;
-    
-    console.log(`🔍 Authenticated app access for: ${authenticatedShop}`);
-    console.log('✅ Session validated:', {
-      id: session.id,
-      shop: session.shop,
-      scope: session.scope
-    });
-
-    try {
-      // Get shop data from our database
-      let shopData = await DatabaseQueries.getShop(authenticatedShop);
-      if (!shopData) {
-        // Create shop record if it doesn't exist
-        console.log(`📝 Creating shop record: ${authenticatedShop}`);
-        await DatabaseQueries.createOrUpdateShop(authenticatedShop, session.accessToken, {
-          shop_name: authenticatedShop.split('.')[0],
-          email: null,
-          phone: null
-        });
-        shopData = await DatabaseQueries.getShop(authenticatedShop);
-      }
-
-      // Render the admin dashboard with real authentication
-      res.send(generateAdminPage(authenticatedShop, shopData, session, req));
-    } catch (error) {
-      console.error('Error loading app:', error);
-      res.status(500).json({ error: 'Failed to load app' });
-    }
   }
-);
+  
+  // For all other cases (non-embedded or without id_token), use proper Shopify authentication
+  console.log('🔐 Using Shopify ensureInstalledOnShop middleware for proper authentication');
+  
+  return shopify.ensureInstalledOnShop()(req, res, async (err) => {
+    if (err) {
+      console.error('❌ Shopify auth middleware error:', err);
+      
+      // Clear any stale data before redirecting to OAuth
+      try {
+        await DatabaseQueries.deleteShop(shop);
+        await DatabaseQueries.deleteShopOrders(shop);
+        await DatabaseQueries.deleteShopCustomers(shop);
+        await DatabaseQueries.deleteShopMessages(shop);
+        console.log('🗑️ Cleaned up stale shop data');
+      } catch (cleanupError) {
+        console.error('Error cleaning up shop data:', cleanupError);
+      }
+      
+      // Redirect to OAuth
+      const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
+      
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Installing App...</title>
+          <script>
+            console.log('App not installed or session invalid, redirecting to OAuth');
+            window.top.location.href = "${authUrl}";
+          </script>
+        </head>
+        <body>
+          <p>Setting up your app. Redirecting...</p>
+          <p>If you are not redirected automatically, <a href="${authUrl}" target="_top">click here</a>.</p>
+        </body>
+        </html>
+      `);
+    }
+    
+    // Auth succeeded, we should have a valid session now
+    const session = res.locals.shopify?.session;
+    
+    if (!session) {
+      console.error('❌ No session after auth middleware');
+      const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
+      return res.redirect(authUrl);
+    }
+    
+    console.log('✅ Session validated through Shopify middleware:', {
+      shop: session.shop,
+      hasAccessToken: !!session.accessToken,
+      sessionId: session.id
+    });
+    
+    try {
+      // Ensure shop exists in our database (save if not exists)
+      let shopData = await DatabaseQueries.getShop(shop);
+      
+      if (!shopData) {
+        console.log('📝 Shop not in database, saving now...');
+        await DatabaseQueries.createOrUpdateShop(
+          session.shop,
+          session.accessToken,
+          {
+            shop_name: session.shop.split('.')[0],
+            email: null,
+            phone: null
+          }
+        );
+        shopData = await DatabaseQueries.getShop(shop);
+        console.log('✅ Shop saved to database');
+      } else {
+        // Update access token in case it changed
+        await DatabaseQueries.createOrUpdateShop(
+          session.shop,
+          session.accessToken,
+          {
+            shop_name: shopData.shop_name,
+            email: shopData.email,
+            phone: shopData.phone
+          }
+        );
+        console.log('✅ Shop access token updated');
+      }
+      
+      // Generate and send the admin page
+      console.log('📱 Generating admin dashboard...');
+      const adminPage = generateAdminPage(shop, shopData, session, req);
+      res.send(adminPage);
+      
+    } catch (error) {
+      console.error('Error in app route:', error);
+      res.status(500).send('Failed to load app');
+    }
+  });
+});
+
+// Manual cleanup route for testing uninstall process
+app.get('/force-cleanup', async (req, res) => {
+  const shop = req.query.shop || 'dowhatss1.myshopify.com';
+  
+  console.log('🗑️ MANUAL CLEANUP REQUESTED for shop:', shop);
+  
+  try {
+    // Perform the same cleanup as app uninstall
+    await handleAppUninstalled(shop);
+    
+    // Also clear any session storage
+    const { sessionStorage } = require('./shopify.app.config');
+    try {
+      await sessionStorage.deleteSession(`offline_${shop}`);
+      console.log('✅ Session storage cleared');
+    } catch (sessionError) {
+      console.log('⚠️ No session to clear');
+    }
+    
+    // Verify cleanup by checking database
+    const shopData = await DatabaseQueries.getShop(shop);
+    
+    res.json({
+      success: true,
+      message: 'Cleanup completed',
+      shop: shop,
+      shopStillExists: !!shopData,
+      cleanupTimestamp: new Date().toISOString(),
+      nextSteps: [
+        'Now try reinstalling the app',
+        'It should go through proper OAuth flow',
+        'Check that it shows installation, not "update data access"'
+      ]
+    });
+    
+  } catch (error) {
+    console.error('❌ Manual cleanup failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      shop: shop
+    });
+  }
+});
+
+// Check webhook registration status
+app.get('/check-webhooks', async (req, res) => {
+  const shop = req.query.shop || 'dowhatss1.myshopify.com';
+  
+  try {
+    // Get shop data to check if we have access token
+    const shopData = await DatabaseQueries.getShop(shop);
+    
+    if (!shopData || !shopData.access_token) {
+      return res.json({
+        error: 'Shop not found or no access token',
+        shop: shop,
+        hasShopData: !!shopData
+      });
+    }
+    
+    // Check registered webhooks via Shopify API
+    const axios = require('axios');
+    const response = await axios.get(
+      `https://${shop}/admin/api/2024-01/webhooks.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': shopData.access_token,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    const webhooks = response.data.webhooks || [];
+    const appUninstalledWebhook = webhooks.find(w => w.topic === 'app/uninstalled');
+    
+    res.json({
+      success: true,
+      shop: shop,
+      totalWebhooks: webhooks.length,
+      appUninstalledWebhook: appUninstalledWebhook ? {
+        id: appUninstalledWebhook.id,
+        topic: appUninstalledWebhook.topic,
+        address: appUninstalledWebhook.address,
+        created_at: appUninstalledWebhook.created_at
+      } : null,
+      hasAppUninstalledWebhook: !!appUninstalledWebhook,
+      allWebhooks: webhooks.map(w => ({
+        topic: w.topic,
+        address: w.address,
+        created_at: w.created_at
+      }))
+    });
+    
+  } catch (error) {
+    console.error('❌ Error checking webhooks:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      shop: shop
+    });
+  }
+});
 
 // Debug route for testing (no auth required)
 app.get('/app-debug', (req, res) => {
@@ -625,45 +1147,71 @@ app.get('/app-debug', (req, res) => {
 
 // API Routes - using proper session token authentication
 app.get('/api/metrics', async (req, res) => {
-    // Extract session token from Authorization header
-    const authHeader = req.headers.authorization;
+    // Extract shop from query parameter (primary method)
+    let shop = req.query.shop;
     let session = null;
-    let shop = null;
     
     console.log('📊 Metrics API called:', {
-      hasAuthHeader: !!authHeader,
+      shopFromQuery: shop,
+      hasAuthHeader: !!req.headers.authorization,
       query: req.query
     });
     
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const jwt = require('jsonwebtoken');
-        const decoded = jwt.decode(token);
-        
-        // Extract shop from the JWT token 
-        shop = decoded?.iss?.replace('https://', '').replace('/admin', '');
-        
-        console.log('🔍 Decoded token:', {
-          iss: decoded?.iss,
-          shop: shop
-        });
-        
-        // Load the session from our database using the shop
-        const { sessionStorage } = require('./shopify.app.config');
-        const sessionId = `offline_${shop}`;
-        session = await sessionStorage.loadSession(sessionId);
-        
-      } catch (error) {
-        console.error('❌ Error validating session token for metrics:', error.message);
+    // If no shop parameter, try to extract from Authorization header
+    if (!shop) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const token = authHeader.substring(7);
+          const jwt = require('jsonwebtoken');
+          const decoded = jwt.decode(token);
+          
+          // Extract shop from the JWT token 
+          shop = decoded?.iss?.replace('https://', '').replace('/admin', '');
+          
+          console.log('🔍 Decoded token for shop:', shop);
+        } catch (error) {
+          console.error('❌ Error decoding token:', error.message);
+        }
       }
     }
     
-    if (!session || !shop) {
-      console.error('❌ No valid session found for metrics API');
-      return res.status(401).json({
+    if (!shop) {
+      console.error('❌ No shop parameter found in query or token');
+      return res.status(400).json({
         success: false,
-        error: 'Unauthorized - no valid session'
+        error: 'Shop parameter required'
+      });
+    }
+    
+    try {
+      // Try to create session from database (our fallback method that works)
+      const { Session } = require('@shopify/shopify-api');
+      const shopData = await DatabaseQueries.getShop(shop);
+      
+      if (shopData && shopData.access_token) {
+        session = new Session({
+          id: `offline_${shop}`,
+          shop: shop,
+          state: '',
+          isOnline: false,
+          accessToken: shopData.access_token,
+          scope: 'write_products,write_checkouts,write_orders,write_customers,read_fulfillments,read_shipping'
+        });
+        
+        console.log('✅ Session created from database for metrics');
+      } else {
+        console.error('❌ No shop data found in database');
+        return res.status(401).json({
+          success: false,
+          error: 'Shop not found - please reinstall the app'
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error creating session for metrics:', error.message);
+      return res.status(500).json({
+        success: false,
+        error: 'Internal server error'
       });
     }
     
@@ -754,7 +1302,7 @@ app.post('/api/test-message', async (req, res) => {
       const message = await twilioClient.messages.create({
         from: process.env.TWILIO_WHATSAPP_NUMBER,
         to: `whatsapp:${testPhone}`,
-        body: `🧪 Test message from ${shop}\\n\\nYour WhatsApp notifications are working correctly!\\n\\nTime: ${new Date().toLocaleString()}`
+        body: `🧪 Test message from ${shop}\n\nYour WhatsApp notifications are working correctly!\n\nTime: ${new Date().toLocaleString()}`
       });
 
       // Save to database
@@ -784,12 +1332,157 @@ app.post('/api/test-message', async (req, res) => {
   }
 );
 
+// Token exchange endpoint for embedded app authorization
+app.post('/api/auth/session-token-exchange', async (req, res) => {
+  try {
+    const { sessionToken, shop } = req.body;
+    
+    if (!sessionToken || !shop) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing sessionToken or shop parameter'
+      });
+    }
+
+    console.log('🔐 Token exchange request:', {
+      shop: shop,
+      hasSessionToken: !!sessionToken
+    });
+
+    // Use Shopify's official Token Exchange API as per documentation
+    const axios = require('axios');
+    
+    try {
+      console.log('🔄 Making request to Shopify Token Exchange API...');
+      
+      const tokenExchangeUrl = `https://${shop}/admin/oauth/access_token`;
+      const tokenExchangePayload = {
+        client_id: process.env.SHOPIFY_API_KEY,
+        client_secret: process.env.SHOPIFY_API_SECRET,
+        grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+        subject_token: sessionToken,
+        subject_token_type: 'urn:ietf:params:oauth:token-type:id_token',
+        requested_token_type: 'urn:shopify:params:oauth:token-type:offline-access-token'
+      };
+
+      console.log('📤 Token exchange payload:', {
+        client_id: process.env.SHOPIFY_API_KEY,
+        grant_type: tokenExchangePayload.grant_type,
+        subject_token_type: tokenExchangePayload.subject_token_type,
+        requested_token_type: tokenExchangePayload.requested_token_type,
+        hasSubjectToken: !!tokenExchangePayload.subject_token
+      });
+
+      const response = await axios.post(tokenExchangeUrl, tokenExchangePayload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      console.log('✅ Token exchange successful:', {
+        hasAccessToken: !!response.data.access_token,
+        scope: response.data.scope
+      });
+
+      // Create session with the new access token
+      const { Session } = require('@shopify/shopify-api');
+      const session = new Session({
+        id: `offline_${shop}`,
+        shop: shop,
+        state: '',
+        isOnline: false,
+        accessToken: response.data.access_token,
+        scope: response.data.scope
+      });
+
+      // Store session in Shopify's session storage
+      const { sessionStorage } = require('./shopify.app.config');
+      await sessionStorage.storeSession(session);
+      
+      // Also save/update shop in our database
+      await DatabaseQueries.createOrUpdateShop(shop, response.data.access_token, {
+        shop_name: shop.split('.')[0],
+        email: null,
+        phone: null
+      });
+      
+      console.log('✅ Session created and stored, shop saved to database');
+
+      return res.json({
+        success: true,
+        message: 'Token exchange successful',
+        sessionId: session.id
+      });
+
+    } catch (tokenExchangeError) {
+      console.error('❌ Shopify token exchange failed:', {
+        status: tokenExchangeError.response?.status,
+        statusText: tokenExchangeError.response?.statusText,
+        data: tokenExchangeError.response?.data,
+        message: tokenExchangeError.message
+      });
+      
+      // If token exchange fails with 400, it means the session token is invalid or expired
+      if (tokenExchangeError.response?.status === 400) {
+        console.log('🔄 Session token expired or invalid, redirecting to OAuth');
+        return res.json({
+          success: false,
+          error: 'Session token expired - redirecting to OAuth',
+          requiresAuth: true
+        });
+      }
+      
+      // For other errors, check if shop exists in our database as fallback
+      const shopData = await DatabaseQueries.getShop(shop);
+      
+      if (!shopData) {
+        console.log('❌ Shop not found in database, requires OAuth installation');
+        return res.json({
+          success: false,
+          error: 'Shop not installed - redirecting to OAuth',
+          requiresAuth: true
+        });
+      }
+
+      // Fallback: Create session with existing access token from database
+      const { Session } = require('@shopify/shopify-api');
+      const session = new Session({
+        id: `offline_${shop}`,
+        shop: shop,
+        state: '',
+        isOnline: false,
+        accessToken: shopData.access_token,
+        scope: process.env.SHOPIFY_SCOPES || 'read_orders,write_orders,read_customers,write_customers'
+      });
+
+      const { sessionStorage } = require('./shopify.app.config');
+      await sessionStorage.storeSession(session);
+      
+      console.log('✅ Fallback session created from database');
+
+      return res.json({
+        success: true,
+        message: 'Token exchange successful (fallback)',
+        sessionId: session.id
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Token exchange error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Token exchange failed'
+    });
+  }
+});
+
 // Webhook routes - use Shopify's webhook processing
 app.use('/webhooks', shopify.processWebhooks({
   webhookHandlers: {
-    ORDERS_CREATE: {
+    'ORDERS_CREATE': {
       deliveryMethod: 'http',
-      callbackUrl: '/webhooks/orders/create',
+      callbackUrl: '/webhooks',
       callback: async (topic, shop, body, webhookId) => {
         console.log(`📦 Order created webhook: ${shop}`);
         try {
@@ -800,9 +1493,9 @@ app.use('/webhooks', shopify.processWebhooks({
         }
       }
     },
-    ORDERS_UPDATED: {
-      deliveryMethod: 'http', 
-      callbackUrl: '/webhooks/orders/updated',
+    'ORDERS_UPDATED': {
+      deliveryMethod: 'http',
+      callbackUrl: '/webhooks',
       callback: async (topic, shop, body, webhookId) => {
         console.log(`📦 Order updated webhook: ${shop}`);
         try {
@@ -813,9 +1506,9 @@ app.use('/webhooks', shopify.processWebhooks({
         }
       }
     },
-    ORDERS_PAID: {
+    'ORDERS_PAID': {
       deliveryMethod: 'http',
-      callbackUrl: '/webhooks/orders/paid', 
+      callbackUrl: '/webhooks',
       callback: async (topic, shop, body, webhookId) => {
         console.log(`💳 Order paid webhook: ${shop}`);
         try {
@@ -826,9 +1519,9 @@ app.use('/webhooks', shopify.processWebhooks({
         }
       }
     },
-    ORDERS_FULFILLED: {
+    'ORDERS_FULFILLED': {
       deliveryMethod: 'http',
-      callbackUrl: '/webhooks/orders/fulfilled',
+      callbackUrl: '/webhooks',
       callback: async (topic, shop, body, webhookId) => {
         console.log(`📦 Order fulfilled webhook: ${shop}`);
         try {
@@ -839,9 +1532,9 @@ app.use('/webhooks', shopify.processWebhooks({
         }
       }
     },
-    CHECKOUTS_CREATE: {
+    'CHECKOUTS_CREATE': {
       deliveryMethod: 'http',
-      callbackUrl: '/webhooks/checkouts/create',
+      callbackUrl: '/webhooks',
       callback: async (topic, shop, body, webhookId) => {
         console.log(`🛒 Checkout created webhook: ${shop}`);
         try {
@@ -852,9 +1545,9 @@ app.use('/webhooks', shopify.processWebhooks({
         }
       }
     },
-    CHECKOUTS_UPDATE: {
-      deliveryMethod: 'http', 
-      callbackUrl: '/webhooks/checkouts/update',
+    'CHECKOUTS_UPDATE': {
+      deliveryMethod: 'http',
+      callbackUrl: '/webhooks',
       callback: async (topic, shop, body, webhookId) => {
         console.log(`🛒 Checkout updated webhook: ${shop}`);
         try {
@@ -865,9 +1558,9 @@ app.use('/webhooks', shopify.processWebhooks({
         }
       }
     },
-    CUSTOMERS_CREATE: {
+    'CUSTOMERS_CREATE': {
       deliveryMethod: 'http',
-      callbackUrl: '/webhooks/customers/create', 
+      callbackUrl: '/webhooks',
       callback: async (topic, shop, body, webhookId) => {
         console.log(`👤 Customer created webhook: ${shop}`);
         try {
@@ -877,9 +1570,84 @@ app.use('/webhooks', shopify.processWebhooks({
           console.error('Error processing customer created:', error);
         }
       }
+    },
+    'APP_UNINSTALLED': {
+      deliveryMethod: 'http',
+      callbackUrl: '/webhooks',
+      callback: async (topic, shop, body, webhookId) => {
+        console.log(`❌ App uninstalled webhook: ${shop}`);
+        try {
+          await handleAppUninstalled(shop);
+        } catch (error) {
+          console.error('Error processing app uninstalled:', error);
+        }
+      }
     }
   }
 }));
+
+// Test endpoint for manual cleanup (development only)
+app.get('/debug/cleanup/:shop', async (req, res) => {
+  const shop = req.params.shop;
+  
+  if (!shop.includes('.myshopify.com')) {
+    return res.status(400).json({ error: 'Invalid shop domain' });
+  }
+  
+  // Add manual force-cleanup endpoint
+  console.log(`🗑️ Manual cleanup requested for shop: ${shop}`);
+  
+  try {
+    // Delete from custom database
+    await DatabaseQueries.deleteShop(shop);
+    await DatabaseQueries.deleteShopOrders(shop);
+    await DatabaseQueries.deleteShopCustomers(shop);
+    await DatabaseQueries.deleteShopMessages(shop);
+    
+    // Clear session storage
+    const { sessionStorage } = require('./shopify.app.config');
+    try {
+      await sessionStorage.deleteSession(`offline_${shop}`);
+      console.log('✅ Cleared session from storage');
+    } catch (e) {
+      console.log('No session to clear');
+    }
+    
+    res.json({
+      success: true,
+      message: `Shop ${shop} has been completely cleaned up. You can now reinstall the app.`,
+      nextStep: `Visit: /auth?shop=${shop}`
+    });
+  } catch (error) {
+    console.error('Error during cleanup:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Force reinstall endpoint (for testing)
+app.get('/debug/force-reinstall/:shop', async (req, res) => {
+  const shop = req.params.shop;
+  
+  try {
+    console.log(`🧪 Manual cleanup triggered for: ${shop}`);
+    await handleAppUninstalled(shop);
+    
+    res.json({
+      success: true,
+      message: `Shop data cleaned up: ${shop}`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Manual cleanup error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
 
 // Webhook handlers
 async function handleOrderCreated(shop, order) {
@@ -1096,6 +1864,38 @@ async function handleCustomerCreated(shop, customer) {
     
   } catch (error) {
     console.error('Error handling customer created:', error);
+  }
+}
+
+async function handleAppUninstalled(shop) {
+  try {
+    console.log(`🗑️ Cleaning up data for uninstalled app: ${shop}`);
+    
+    // Remove shop from our custom database
+    await DatabaseQueries.deleteShop(shop);
+    console.log(`✅ Removed shop from whatsapp_shopify.db: ${shop}`);
+    
+    // Remove shop sessions from Shopify's session storage
+    const { sessionStorage } = require('./shopify.app.config');
+    const sessionId = `offline_${shop}`;
+    
+    try {
+      await sessionStorage.deleteSession(sessionId);
+      console.log(`✅ Removed Shopify session: ${sessionId}`);
+    } catch (sessionError) {
+      console.log(`⚠️ Session not found or already deleted: ${sessionId}`);
+    }
+    
+    // Clean up any other shop-related data
+    await DatabaseQueries.deleteShopOrders(shop);
+    await DatabaseQueries.deleteShopCustomers(shop);
+    await DatabaseQueries.deleteShopMessages(shop);
+    
+    console.log(`🎉 App uninstall cleanup completed for: ${shop}`);
+    
+  } catch (error) {
+    console.error(`❌ Error during app uninstall cleanup for ${shop}:`, error);
+    // Don't throw the error - we want the webhook to succeed even if cleanup partially fails
   }
 }
 
@@ -1403,7 +2203,8 @@ function generateAdminPage(shop, shopData, session, req) {
     <link rel="stylesheet" href="https://unpkg.com/@shopify/polaris@12.0.0/build/esm/styles.css" />
     
     <!-- App Bridge -->
-    <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+    <script src="https://unpkg.com/@shopify/app-bridge@3.7.9"></script>
+    <script src="https://unpkg.com/@shopify/app-bridge/umd/index.js"></script>
     
     <style>
         body { 
@@ -1668,29 +2469,100 @@ function generateAdminPage(shop, shopData, session, req) {
     <script>
         console.time('🚀 Dashboard initialization');
         
-        // Get session token from URL parameters and use it for authenticated requests
-        const urlParams = new URLSearchParams(window.location.search);
-        const sessionToken = urlParams.get('id_token');
+        // Add error handler for postMessage origin mismatch issues
+        window.addEventListener('error', function(e) {
+            if (e.message && e.message.includes('postMessage') && e.message.includes('origin')) {
+                console.log('⚠️ Suppressing postMessage origin error (normal for embedded apps)');
+                e.preventDefault();
+                return false;
+            }
+        });
         
-        const authenticatedFetch = async (url, options = {}) => {
-            return fetch(url, {
-                ...options,
-                headers: {
-                    'Authorization': \`Bearer \${sessionToken}\`,
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                }
+        // Initialize App Bridge with session token authentication
+        const AppBridge = window['app-bridge'];
+        const createApp = AppBridge.default;
+        const actions = AppBridge.actions;
+        const utils = AppBridge.utilities;
+        
+        let app;
+        let authenticatedFetch;
+        
+        try {
+            console.log('🔧 Initializing App Bridge...');
+            
+            // Get URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const host = urlParams.get('host');
+            const embedded = urlParams.get('embedded');
+            
+            console.log('🔍 Context check:', {
+                isIframe: window.top !== window.self,
+                hasHost: !!host,
+                hasEmbedded: embedded === '1',
+                userAgent: navigator.userAgent.includes('Shopify')
             });
-        };
-        
-        console.log('✅ Authenticated fetch ready');
+            
+            // Initialize App Bridge if we have the embedded parameter or are in iframe
+            if ((embedded === '1' || window.top !== window.self) && host) {
+                // Create App Bridge instance for embedded context
+                app = createApp({
+                    apiKey: '${process.env.SHOPIFY_API_KEY}',
+                    host: host,
+                    forceRedirect: false
+                });
+                
+                // Use App Bridge's authenticated fetch which automatically handles session tokens
+                authenticatedFetch = utils.authenticatedFetch(app);
+                
+                console.log('✅ App Bridge initialized with authenticated fetch');
+            } else {
+                console.log('⚠️ Not in embedded context or missing host parameter');
+                throw new Error('Not in embedded context');
+            }
+            
+        } catch (error) {
+            console.error('❌ App Bridge initialization failed:', error);
+            
+            // Fallback to manual authentication for non-embedded or direct access
+            const sessionToken = urlParams.get('id_token');
+            authenticatedFetch = async (url, options = {}) => {
+                try {
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        'X-Shopify-Shop-Domain': '${shop}',
+                        ...options.headers
+                    };
+                    
+                    // Add authorization header if session token is available
+                    if (sessionToken) {
+                        headers['Authorization'] = \`Bearer \${sessionToken}\`;
+                    }
+                    
+                    return fetch(url, {
+                        ...options,
+                        headers
+                    });
+                } catch (fetchError) {
+                    console.error('❌ Fetch error:', fetchError);
+                    throw fetchError;
+                }
+            };
+            console.log('⚠️ Using fallback authenticated fetch');
+        }
 
-        // Load metrics using authenticated fetch
+        // Load metrics using authenticated fetch with shop parameter
         async function loadMetrics() {
             console.log('🔍 Starting to load metrics...');
             try {
-                const response = await authenticatedFetch('/api/metrics');
+                const response = await authenticatedFetch('/api/metrics?shop=${encodeURIComponent(shop)}');
                 console.log('📡 Response received:', response.status);
+                
+                if (!response.ok) {
+                    console.error('❌ API request failed:', response.status, response.statusText);
+                    showError('API request failed');
+                    return;
+                }
+                
                 const data = await response.json();
                 console.log('📊 Data parsed:', data);
                 
@@ -1702,8 +2574,10 @@ function generateAdminPage(shop, shopData, session, req) {
                     showError('Failed to load metrics');
                 }
             } catch (error) {
-                console.error('Failed to load metrics:', error);
+                console.error('❌ Failed to load metrics:', error);
                 showError('Error loading metrics');
+                // Prevent any errors from propagating and causing navigation issues
+                return;
             }
         }
 
@@ -1738,7 +2612,7 @@ function generateAdminPage(shop, shopData, session, req) {
             const isActive = element.classList.contains('active');
             
             // Save setting using authenticated fetch
-            authenticatedFetch('/api/settings', {
+            authenticatedFetch('/api/settings?shop=${encodeURIComponent(shop)}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1771,7 +2645,7 @@ function generateAdminPage(shop, shopData, session, req) {
             button.disabled = true;
             button.textContent = 'Sending...';
             
-            authenticatedFetch('/api/test-message', {
+            authenticatedFetch('/api/test-message?shop=${encodeURIComponent(shop)}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1785,8 +2659,10 @@ function generateAdminPage(shop, shopData, session, req) {
                   }
               })
               .catch(error => {
-                  console.error('Error sending test message:', error);
+                  console.error('❌ Error sending test message:', error);
                   alert('❌ Error sending test message');
+                  // Prevent errors from propagating
+                  return;
               })
               .finally(() => {
                   button.disabled = false;
@@ -1794,9 +2670,12 @@ function generateAdminPage(shop, shopData, session, req) {
               });
         }
         
-        // Load metrics on page load
+        // Load metrics on page load with error isolation
         console.time('📊 Metrics loading');
-        loadMetrics().finally(() => {
+        loadMetrics().catch(error => {
+            console.error('❌ Metrics loading failed, but continuing:', error);
+            showError('Failed to load metrics');
+        }).finally(() => {
             console.timeEnd('📊 Metrics loading');
             console.timeEnd('🚀 Dashboard initialization');
         });
@@ -1807,6 +2686,68 @@ function generateAdminPage(shop, shopData, session, req) {
 </html>
   `;
 }
+
+// Catch-all fallback route for unmatched paths (must be last)
+app.get('*', (req, res) => {
+  const shop = req.query.shop;
+  const path = req.path;
+  
+  console.log('🚨 404 - Unmatched route:', {
+    path: path,
+    shop: shop,
+    query: req.query,
+    headers: {
+      'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
+      'referer': req.headers['referer']
+    }
+  });
+  
+  // If this is from Shopify admin and has a shop parameter, show helpful info
+  if (shop && ValidationUtils.isValidShopDomain(shop)) {
+    res.send(`
+      <h1>🚫 Route Not Found: ${escapeHtml(path)}</h1>
+      <p><strong>Shop:</strong> ${escapeHtml(shop)}</p>
+      
+      <h2>📋 This usually means:</h2>
+      <ol>
+        <li>The App URL in Partner Dashboard is incorrect</li>
+        <li>Shopify is trying to access a route that doesn't exist</li>
+        <li>There's a mismatch between expected and actual routes</li>
+      </ol>
+      
+      <h2>✅ Available Routes:</h2>
+      <ul>
+        <li><code>/app</code> - Main app dashboard (authenticated)</li>
+        <li><code>/auth</code> - OAuth flow start</li>
+        <li><code>/auth/callback</code> - OAuth callback</li>
+        <li><code>/api/*</code> - API endpoints</li>
+        <li><code>/webhooks/*</code> - Webhook endpoints</li>
+      </ul>
+      
+      <h2>🔧 Quick Actions:</h2>
+      <ul>
+        <li><a href="/app?shop=${encodeURIComponent(shop)}">Go to App Dashboard</a></li>
+        <li><a href="/debug/partner-config">Check Partner Dashboard Config</a></li>
+        <li><a href="/debug?shop=${encodeURIComponent(shop)}">View Debug Info</a></li>
+      </ul>
+      
+      <h2>💡 To Fix This:</h2>
+      <ol>
+        <li>Go to your Shopify Partner Dashboard</li>
+        <li>Find your app and click "App setup"</li>
+        <li>Set the App URL to: <code>${process.env.SHOPIFY_APP_URL}/app</code></li>
+        <li>Save changes and try again</li>
+      </ol>
+    `);
+  } else {
+    // Generic 404 page
+    res.status(404).send(`
+      <h1>404 - Page Not Found</h1>
+      <p>The requested path <code>${escapeHtml(path)}</code> was not found.</p>
+      <p><a href="/">Go to Home</a></p>
+    `);
+  }
+});
 
 // Initialize database and start server
 async function startServer() {
