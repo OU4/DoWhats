@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading...</title>
+    <script src="https://unpkg.com/@shopify/app-bridge@3.7.9/umd/index.js"></script>
+</head>
+<body>
+    <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+        <div style="text-align: center;">
+            <div style="width: 50px; height: 50px; border: 3px solid #f3f3f3; border-top: 3px solid #008060; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            <p style="margin-top: 16px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #6d7175;">
+                Authenticating with Shopify...
+            </p>
+        </div>
+    </div>
+    
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+    <script>
+        // Parse URL parameters
+        const params = new URLSearchParams(window.location.search);
+        const shop = params.get('shop');
+        const host = params.get('host');
+        const shopifyReload = params.get('shopify-reload');
+        
+        console.log('Bounce page loaded:', { 
+            shop, 
+            host, 
+            shopifyReload,
+            userAgent: navigator.userAgent
+        });
+
+        // Main authentication handler
+        function handleAuthentication() {
+            if (!shop) {
+                console.error('Missing shop parameter');
+                document.body.innerHTML = `
+                    <div style="max-width: 600px; margin: 50px auto; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">
+                        <h1 style="color: #d72c0d;">Authentication Error</h1>
+                        <p>Missing shop parameter. Please access this app through your Shopify admin.</p>
+                        <p style="margin-top: 30px;">
+                            <a href="/auth" style="background: #008060; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+                                Try Authentication Again
+                            </a>
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Start App Bridge initialization
+            initializeAppBridge();
+        }
+
+        // Initialize App Bridge to get session token
+        function initializeAppBridge() {
+            try {
+                console.log('Initializing App Bridge...');
+                
+                if (!window.ShopifyAppBridge) {
+                    throw new Error('App Bridge not loaded');
+                }
+
+                // Create App Bridge instance
+                const app = window.ShopifyAppBridge.createApp({
+                    apiKey: 'INSERT_API_KEY_HERE', // This will be replaced by server
+                    shopOrigin: shop,
+                    forceRedirect: true
+                });
+
+                console.log('App Bridge created successfully');
+
+                // Get session token from App Bridge
+                app.getState().then(state => {
+                    console.log('App Bridge state:', state);
+                    
+                    // Get session token using App Bridge utilities
+                    if (window.ShopifyAppBridge.authenticatedFetch) {
+                        // This will automatically include the session token in Authorization header
+                        console.log('Using App Bridge authenticated fetch');
+                        handleAppBridgeAuth(app);
+                    } else {
+                        // Fallback: try to get session token manually
+                        getSessionTokenFromAppBridge(app);
+                    }
+                }).catch(error => {
+                    console.error('Failed to get App Bridge state:', error);
+                    fallbackToOAuth();
+                });
+
+            } catch (error) {
+                console.error('App Bridge initialization failed:', error);
+                fallbackToOAuth();
+            }
+        }
+
+        // Handle authentication using App Bridge
+        function handleAppBridgeAuth(app) {
+            try {
+                // If we have a shopify-reload parameter, redirect to that URL
+                if (shopifyReload) {
+                    console.log('Redirecting to shopify-reload URL:', shopifyReload);
+                    window.location.href = shopifyReload;
+                    return;
+                }
+
+                // Default redirect to app
+                const targetUrl = `/app?embedded=1&shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
+                console.log('Redirecting to app:', targetUrl);
+                window.location.href = targetUrl;
+
+            } catch (error) {
+                console.error('Authentication handling failed:', error);
+                fallbackToOAuth();
+            }
+        }
+
+        // Try to get session token from App Bridge manually
+        function getSessionTokenFromAppBridge(app) {
+            try {
+                // App Bridge should automatically handle session tokens
+                // For manual token access, we'd use app.idToken() but this is deprecated
+                console.log('Attempting manual session token retrieval...');
+                
+                // Use the modern approach - let App Bridge handle it automatically
+                handleAppBridgeAuth(app);
+                
+            } catch (error) {
+                console.error('Failed to get session token:', error);
+                fallbackToOAuth();
+            }
+        }
+
+        // Fallback to OAuth flow
+        function fallbackToOAuth() {
+            console.log('Falling back to OAuth flow');
+            const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
+            console.log('Redirecting to OAuth:', authUrl);
+            window.location.href = authUrl;
+        }
+
+        // Start the authentication process when App Bridge loads
+        function startAuthenticationFlow() {
+            if (window.ShopifyAppBridge) {
+                initializeAppBridge();
+            } else {
+                // Wait for App Bridge to load
+                console.log('Waiting for App Bridge to load...');
+                let attempts = 0;
+                const checkAppBridge = setInterval(() => {
+                    attempts++;
+                    if (window.ShopifyAppBridge) {
+                        clearInterval(checkAppBridge);
+                        initializeAppBridge();
+                    } else if (attempts > 20) { // 10 seconds timeout
+                        clearInterval(checkAppBridge);
+                        console.error('App Bridge failed to load after 10 seconds');
+                        fallbackToOAuth();
+                    }
+                }, 500);
+            }
+        }
+
+        // Start the authentication process
+        handleAuthentication();
+    </script>
+</body>
+</html>

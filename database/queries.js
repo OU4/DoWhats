@@ -812,6 +812,257 @@ static disableCustomer(customerId) {
       );
     });
   }
+
+  static deleteShopAbandonedCarts(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM abandoned_carts WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted abandoned carts for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopAnalytics(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM analytics WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted analytics for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopCampaigns(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM campaigns WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted campaigns for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopBackInStockSubscriptions(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM back_in_stock_subscriptions WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted back in stock subscriptions for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopProductVariants(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM product_variants WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted product variants for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopTemplates(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM templates WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted templates for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopAutomations(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM automations WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted automations for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopWebhooks(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM webhooks WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted webhooks for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopBilling(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM billing WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted billing records for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  static deleteShopConversations(shopDomain) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM conversations WHERE shop_domain = ?',
+        [shopDomain],
+        function(err) {
+          if (err) reject(err);
+          else {
+            console.log(`🗑️ Deleted conversations for shop: ${shopDomain} (${this.changes} rows affected)`);
+            resolve(this.changes);
+          }
+        }
+      );
+    });
+  }
+
+  // COMPLETE DATABASE WIPE METHODS (for testing)
+  
+  static wipeAllData() {
+    return new Promise((resolve, reject) => {
+      console.log('🔥 WIPING ALL DATABASE DATA - THIS IS DESTRUCTIVE!');
+      
+      const tables = [
+        'messages', 'orders', 'customers', 'abandoned_carts', 'analytics',
+        'campaigns', 'templates', 'automations', 'webhooks', 'billing',
+        'conversations', 'shops'
+      ];
+      
+      const results = {};
+      let completedTables = 0;
+      
+      tables.forEach(table => {
+        db.run(`DELETE FROM ${table}`, function(err) {
+          if (err) {
+            console.error(`❌ Failed to wipe table ${table}:`, err.message);
+            results[table] = { success: false, error: err.message };
+          } else {
+            console.log(`🗑️ Wiped table ${table} (${this.changes} rows deleted)`);
+            results[table] = { success: true, rowsDeleted: this.changes };
+          }
+          
+          completedTables++;
+          if (completedTables === tables.length) {
+            resolve(results);
+          }
+        });
+      });
+    });
+  }
+
+  static resetAutoIncrement() {
+    return new Promise((resolve, reject) => {
+      console.log('🔄 Resetting auto increment counters...');
+      
+      const tables = [
+        'shops', 'messages', 'orders', 'customers', 'abandoned_carts',
+        'analytics', 'campaigns', 'templates', 'automations', 'webhooks',
+        'billing', 'conversations'
+      ];
+      
+      let completedTables = 0;
+      
+      tables.forEach(table => {
+        db.run(`DELETE FROM sqlite_sequence WHERE name='${table}'`, function(err) {
+          if (err) {
+            console.log(`⚠️ Could not reset auto increment for ${table}: ${err.message}`);
+          } else {
+            console.log(`✅ Reset auto increment for ${table}`);
+          }
+          
+          completedTables++;
+          if (completedTables === tables.length) {
+            resolve();
+          }
+        });
+      });
+    });
+  }
+
+  static getDatabaseStats() {
+    return new Promise((resolve, reject) => {
+      const tables = [
+        'shops', 'messages', 'orders', 'customers', 'abandoned_carts',
+        'analytics', 'campaigns', 'templates', 'automations', 'webhooks',
+        'billing', 'conversations'
+      ];
+      
+      const stats = {};
+      let completedTables = 0;
+      
+      tables.forEach(table => {
+        db.get(`SELECT COUNT(*) as count FROM ${table}`, (err, row) => {
+          if (err) {
+            stats[table] = { error: err.message };
+          } else {
+            stats[table] = { count: row.count };
+          }
+          
+          completedTables++;
+          if (completedTables === tables.length) {
+            resolve(stats);
+          }
+        });
+      });
+    });
+  }
 }
 
 

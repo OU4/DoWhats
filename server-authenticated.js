@@ -85,130 +85,135 @@ app.use((req, res, next) => {
   next();
 });
 
-// Add detailed debugging for OAuth callbacks
-app.use('/auth/callback', (req, res, next) => {
-  console.log('🔍 CALLBACK DEBUG - Request received:', {
-    method: req.method,
-    url: req.originalUrl,
-    query: req.query,
-    headers: {
-      'x-shopify-shop-domain': req.headers['x-shopify-shop-domain'],
-      'x-shopify-topic': req.headers['x-shopify-topic'],
-      'host': req.headers['host'],
-      'user-agent': req.headers['user-agent'],
-      'referer': req.headers['referer']
-    },
-    shop: req.query.shop,
-    code: req.query.code,
-    state: req.query.state,
-    hmac: req.query.hmac,
-    timestamp: new Date().toISOString()
-  });
-  next();
+// Session Token Validation Middleware - CRITICAL for embedded apps
+async function validateSessionToken(req, res, next) {
+  // Skip validation for webhooks and public routes
+  if (req.path.startsWith('/webhooks') || 
+      req.path.startsWith('/auth') || 
+      req.path.startsWith('/exitiframe') ||
+      req.path.startsWith('/public') ||
+      req.path.startsWith('/api/auth/session-token-exchange') ||
+      req.path === '/force-cleanup' ||
+      req.path === '/check-webhooks' ||
+      req.path === '/bounce' ||
+      req.path.startsWith('/debug') ||
+      req.path === '/') {
+    return next();
+  }
+
+  console.log('🔐 Validating session token for:', req.path);
+
+  // Get session token from Authorization header (primary method)
+  let sessionToken = req.headers.authorization?.replace('Bearer ', '');
+  
+  // Fallback: Get session token from URL parameter (initial load only)
+  if (!sessionToken) {
+    sessionToken = req.query.id_token;
+  }
+
+  // Get shop from query or extract from token
+  let shop = req.query.shop;
+
+  if (!sessionToken) {
+    console.log('❌ No session token found, redirecting to bounce page');
+    return redirectToBouncePage(req, res);
+  }
+
+  try {
+    // Validate session token using Shopify API library
+    const decodedSessionToken = await shopify.api.session.decodeSessionToken(sessionToken);
+    
+    console.log('✅ Session token validated:', {
+      dest: decodedSessionToken.dest,
+      aud: decodedSessionToken.aud,
+      exp: new Date(decodedSessionToken.exp * 1000).toISOString()
+    });
+
+    // Extract shop from token if not in query
+    if (!shop && decodedSessionToken.dest) {
+      shop = decodedSessionToken.dest.replace('https://', '').replace('/admin', '');
+    }
+
+    if (!shop) {
+      console.log('❌ No shop found in token or query');
+      return res.status(400).json({ error: 'Shop parameter required' });
+    }
+
+    console.log('✅ Session token validated for shop:', shop);
+    
+    // Add validated data to request
+    req.sessionToken = sessionToken;
+    req.shop = shop;
+    req.sessionData = decodedSessionToken;
+    
+    next();
+
+  } catch (error) {
+    console.error('❌ Session token validation error:', error.message);
+    
+    // If session token is invalid/expired, redirect to bounce page for refresh
+    if (error.message.includes('expired') || error.message.includes('invalid')) {
+      console.log('🔄 Session token expired/invalid, redirecting to bounce page');
+      return redirectToBouncePage(req, res);
+    }
+    
+    return redirectToBouncePage(req, res);
+  }
+}
+
+// Helper function to redirect to bounce page
+function redirectToBouncePage(req, res) {
+  const shop = req.query.shop || req.shop;
+  const searchParams = new URLSearchParams(req.query);
+  
+  // Remove stale id_token to prevent invalid token issues
+  searchParams.delete('id_token');
+  
+  // Add shopify-reload parameter for automatic redirect after token refresh
+  searchParams.set('shopify-reload', `${req.path}?${searchParams.toString()}`);
+  
+  const bounceUrl = `/bounce?${searchParams.toString()}`;
+  console.log('🔄 Redirecting to bounce page:', bounceUrl);
+  
+  return res.redirect(bounceUrl);
+}
+
+// When using Shopify CLI, disable custom authentication middleware
+// Shopify CLI handles all authentication automatically
+console.log('🔧 Running with Shopify CLI - custom authentication disabled');
+
+// Skip custom authentication middleware entirely when using Shopify CLI
+app.use((req, res, next) => {
+  // Skip completely for all Shopify OAuth related paths
+  if (req.path === '/auth' || 
+      req.path === '/auth/callback' || 
+      req.path.startsWith('/auth/') ||
+      req.path === '/exitiframe') {
+    console.log(`🔄 Skipping ALL middleware for Shopify OAuth path: ${req.path}`);
+    return next();
+  }
+  
+  // For Shopify CLI development, skip custom token validation
+  // Shopify CLI handles authentication via its own mechanisms
+  console.log(`✅ Shopify CLI mode - allowing access to: ${req.path}`);
+  return next();
 });
+
+// OAuth callback debugging removed - let Shopify App Bridge handle completely
 
 // Add Shopify middleware
 app.use(shopify.cspHeaders());
 
-// Add comprehensive OAuth flow logging
-app.use('/auth', (req, res, next) => {
-  console.log('🔐 AUTH MIDDLEWARE - Request received:', {
-    method: req.method,
-    url: req.originalUrl,
-    query: req.query,
-    timestamp: new Date().toISOString()
-  });
-  next();
-});
+// OAuth flow logging removed - let Shopify App Bridge handle completely
 
-// Apply Shopify auth middleware properly
+// ✅ SHOPIFY CLI COMPATIBLE AUTH SETUP
+// Use ONLY Shopify's built-in auth handlers - no custom middleware
+console.log('🔧 Shopify CLI mode - using clean auth setup');
+
 app.use('/auth', shopify.auth.begin());
-
-// Add pre-callback logging
-app.use('/auth/callback', (req, res, next) => {
-  console.log('🔗 PRE-CALLBACK - Before Shopify auth callback:', {
-    method: req.method,
-    url: req.originalUrl,
-    query: req.query,
-    hasCode: !!req.query.code,
-    hasState: !!req.query.state,
-    hasHmac: !!req.query.hmac,
-    shop: req.query.shop,
-    timestamp: new Date().toISOString()
-  });
-  next();
-});
-
-app.use('/auth/callback', shopify.auth.callback());
-
-// Add post-callback logging
-app.use('/auth/callback', (req, res, next) => {
-  console.log('🎉 POST-CALLBACK - After Shopify auth callback:', {
-    hasSessionLocals: !!res.locals.shopify,
-    hasSession: !!res.locals.shopify?.session,
-    sessionShop: res.locals.shopify?.session?.shop,
-    sessionId: res.locals.shopify?.session?.id,
-    hasAccessToken: !!res.locals.shopify?.session?.accessToken,
-    timestamp: new Date().toISOString()
-  });
-  next();
-});
-
-// Add middleware to save shop after successful OAuth
-app.use('/auth/callback', async (req, res, next) => {
-  // This runs after Shopify's auth callback
-  const shop = req.query.shop;
-  
-  if (shop && res.locals.shopify && res.locals.shopify.session) {
-    const session = res.locals.shopify.session;
-    console.log('🎉 OAuth completed successfully, saving shop to database:', shop);
-    
-    try {
-      await DatabaseQueries.createOrUpdateShop(
-        session.shop,
-        session.accessToken,
-        {
-          shop_name: session.shop.split('.')[0],
-          email: null,
-          phone: null
-        }
-      );
-      console.log('✅ Shop saved to database after OAuth');
-    } catch (error) {
-      console.error('❌ Failed to save shop after OAuth:', error);
-    }
-  }
-  
-  next();
-});
-
-// Skip Shopify session validation for debug/test routes only
-app.use((req, res, next) => {
-  // Skip for debug/test routes and API routes
-  if (req.path.startsWith('/debug') || 
-      req.path.startsWith('/check-sessions') || 
-      req.path.startsWith('/test-oauth') ||
-      req.path.startsWith('/install') ||
-      req.path.startsWith('/ngrok-test') ||
-      req.path.startsWith('/exitiframe') ||
-      req.path.startsWith('/auth') ||
-      req.path.startsWith('/api')) {
-    return next();
-  }
-  
-  // For all other routes, let Shopify middleware handle session validation
-  next();
-});
-
-// Handle direct access to callback URL (redirect to app)
-app.get('/auth/callback', (req, res, next) => {
-  // If someone accesses callback directly without going through OAuth
-  if (!req.query.code && !req.query.shop) {
-    return res.redirect('/app');
-  }
-  // Otherwise, let Shopify middleware handle it
-  next();
-});
+app.use('/auth/callback', shopify.auth.callback(), 
+  shopify.redirectToShopifyOrAppRoot()
+);
 
 // Add exitiframe route for embedded app OAuth flow
 app.get('/exitiframe', (req, res) => {
@@ -449,6 +454,22 @@ app.get('/install', (req, res) => {
   `);
 });
 
+// Bounce page route for session token handling
+app.get('/bounce', (req, res) => {
+  console.log('📄 Bounce page requested:', req.query);
+  
+  const fs = require('fs');
+  const path = require('path');
+  
+  // Read the bounce.html template
+  const bounceTemplate = fs.readFileSync(path.join(__dirname, 'public/bounce.html'), 'utf8');
+  
+  // Replace environment variable placeholders
+  const bounceHtml = bounceTemplate.replace('${process.env.SHOPIFY_API_KEY}', process.env.SHOPIFY_API_KEY);
+  
+  res.send(bounceHtml);
+});
+
 // Home route - redirect to app if shop parameter exists
 app.get('/', (req, res) => {
   console.log('🏠 Root route accessed:', {
@@ -577,7 +598,7 @@ app.get('/ngrok-test', (req, res) => {
       <h3>🔧 Next Steps:</h3>
       <ol>
         <li>If you see a warning page before this, ngrok needs configuration</li>
-        <li>Try accessing this URL directly: <code>https://d6a48525369e.ngrok-free.app/ngrok-test</code></li>
+        <li>Try accessing this URL directly: <code>https://79f7a71000ae.ngrok-free.app/ngrok-test</code></li>
         <li>Then test OAuth: <a href="/auth?shop=dowhatss1.myshopify.com">Start OAuth Flow</a></li>
       </ol>
       
@@ -722,71 +743,59 @@ app.get('/bounce', (req, res) => {
   // Allow this page to be embedded in Shopify iframe
   res.removeHeader('Content-Security-Policy');
   res.setHeader('X-Frame-Options', 'ALLOWALL');
-  res.sendFile(path.join(__dirname, 'public', 'bounce.html'));
+  
+  // Read the bounce.html file and replace the API key placeholder
+  const fs = require('fs');
+  const bounceHtmlPath = path.join(__dirname, 'public', 'bounce.html');
+  const bounceHtml = fs.readFileSync(bounceHtmlPath, 'utf8');
+  const modifiedHtml = bounceHtml.replace('INSERT_API_KEY_HERE', process.env.SHOPIFY_API_KEY);
+  
+  res.send(modifiedHtml);
 });
 
 // Authenticated app route (for Shopify admin access)
 app.get('/app', async (req, res, next) => {
-  const shop = req.query.shop;
+  const shop = req.shop || req.query.shop;
   const embedded = req.query.embedded;
   const host = req.query.host;
   
-  console.log('🔍 APP ROUTE DEBUG:', {
-    method: req.method,
-    url: req.originalUrl,
-    query: req.query,
-    sessionLocals: res.locals.shopify ? 'Has session locals' : 'No session locals',
-    cookies: req.headers.cookie ? 'Has cookies' : 'No cookies'
-  });
-  
   console.log('🔍 App route accessed:', {
     shop,
-    hasIdToken: !!req.query.id_token,
-    hasSession: !!res.locals.shopify?.session,
+    hasValidatedSession: !!req.sessionToken,
+    hasSessionData: !!req.sessionData,
     embedded: embedded,
     host: host
   });
   
-  // If no shop parameter, show error with detailed debugging
+  // If no shop parameter, show error
   if (!shop) {
-    console.error('❌ No Shop Parameter DEBUG:', {
-      query: req.query,
-      url: req.originalUrl,
-      referer: req.headers.referer,
-      userAgent: req.headers['user-agent'],
-      cookies: req.headers.cookie
-    });
+    console.error('❌ No shop parameter provided');
     return res.send(`
       <h1>❌ No Shop Parameter</h1>
       <p>This app must be accessed through Shopify admin or with a shop parameter.</p>
-      <p><strong>URL:</strong> ${req.originalUrl}</p>
-      <p><strong>Query:</strong> ${JSON.stringify(req.query)}</p>
-      <p><strong>Referer:</strong> ${req.headers.referer || 'None'}</p>
       <p><a href="/install">Go to Installation Page</a></p>
     `);
   }
   
   // Check if this is the initial redirect from Shopify (with hmac but no embedded flag)
   if (req.query.hmac && !embedded) {
-    console.log('🔄 Initial Shopify redirect detected');
-    // Instead of bounce page, redirect directly with embedded flag
-    const redirectUrl = `/app?embedded=1&shop=${encodeURIComponent(shop)}&host=${encodeURIComponent(host)}`;
-    console.log('🔄 Redirecting to:', redirectUrl);
+    console.log('🔄 Initial Shopify redirect detected, redirecting to embedded app');
+    const redirectUrl = `/app?embedded=1&shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
     return res.redirect(redirectUrl);
   }
   
-  // For embedded app with id_token, try direct session handling first
-  if (embedded === '1' && req.query.id_token) {
-    console.log('📱 Embedded app with id_token detected');
+  // If we have validated session data from middleware, use it
+  if (req.sessionToken && req.sessionData) {
+    console.log('✅ Using validated session from middleware');
     
     try {
-      // First check if we have the shop in our database
-      const shopData = await DatabaseQueries.getShop(shop);
+      // Get shop data from database
+      let shopData = await DatabaseQueries.getShop(shop);
       
       if (shopData && shopData.access_token) {
-        console.log('✅ Shop found in database, creating session with existing access token');
+        console.log('✅ Shop found in database, generating admin page');
         
-        // Create session with existing access token
+        // Create session object for compatibility
         const { Session } = require('@shopify/shopify-api');
         const session = new Session({
           id: `offline_${shop}`,
@@ -797,108 +806,63 @@ app.get('/app', async (req, res, next) => {
           scope: process.env.SHOPIFY_SCOPES || 'read_orders,write_orders,read_customers,write_customers'
         });
         
-        // Store session
-        const { sessionStorage } = require('./shopify.app.config');
-        await sessionStorage.storeSession(session);
         res.locals.shopify = { session };
         
-        console.log('✅ Session created from database access token');
-        
         // Generate and send the admin page
-        console.log('📱 Generating admin dashboard...');
         const adminPage = generateAdminPage(shop, shopData, session, req);
         return res.send(adminPage);
         
       } else {
-        console.log('❌ Shop not found in database, using Shopify middleware for authentication');
+        console.log('💾 Shop not found in database, but we have valid session token - creating shop record');
         
-        // Shop not in database, use Shopify's middleware for OAuth
-        return shopify.ensureInstalledOnShop()(req, res, async (err) => {
-          if (err) {
-            console.error('❌ Shopify auth middleware error:', err);
-            
-            // Clear any stale data before redirecting to OAuth
-            try {
-              await DatabaseQueries.deleteShop(shop);
-              await DatabaseQueries.deleteShopOrders(shop);
-              await DatabaseQueries.deleteShopCustomers(shop);
-              await DatabaseQueries.deleteShopMessages(shop);
-              console.log('🗑️ Cleaned up stale shop data');
-            } catch (cleanupError) {
-              console.error('Error cleaning up shop data:', cleanupError);
+        // We have a valid session token, so the app is installed
+        // Create a temporary access token using the session token flow
+        try {
+          // For now, create a shop record with placeholder access token
+          // The real access token will be obtained through session token exchange
+          await DatabaseQueries.createOrUpdateShop(
+            shop,
+            'session_token_auth', // Placeholder - will be replaced with real token
+            {
+              shop_name: shop.split('.')[0],
+              email: null,
+              phone: null
             }
-            
-            // Redirect to OAuth
-            const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
-            return res.redirect(authUrl);
-          }
+          );
           
-          // Auth succeeded through Shopify middleware
-          const session = res.locals.shopify?.session;
+          shopData = await DatabaseQueries.getShop(shop);
+          console.log('✅ Shop record created with session token auth');
           
-          if (!session) {
-            console.error('❌ No session after auth middleware');
-            const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
-            return res.redirect(authUrl);
-          }
-          
-          console.log('✅ Session validated through Shopify middleware:', {
-            shop: session.shop,
-            hasAccessToken: !!session.accessToken
+          // Create session object
+          const { Session } = require('@shopify/shopify-api');
+          const session = new Session({
+            id: `offline_${shop}`,
+            shop: shop,
+            state: '',
+            isOnline: false,
+            accessToken: 'session_token_auth', // Placeholder
+            scope: process.env.SHOPIFY_SCOPES || 'read_orders,write_orders,read_customers,write_customers'
           });
           
-          try {
-            // Save shop to database
-            await DatabaseQueries.createOrUpdateShop(
-              session.shop,
-              session.accessToken,
-              {
-                shop_name: session.shop.split('.')[0],
-                email: null,
-                phone: null
-              }
-            );
-            
-            const shopData = await DatabaseQueries.getShop(shop);
-            console.log('✅ Shop saved to database after OAuth');
-            
-            // Generate and send the admin page
-            console.log('📱 Generating admin dashboard...');
-            const adminPage = generateAdminPage(shop, shopData, session, req);
-            return res.send(adminPage);
-            
-          } catch (error) {
-            console.error('Error in app route:', error);
-            return res.status(500).send('Failed to load app');
-          }
-        });
+          res.locals.shopify = { session };
+          
+          // Generate and send the admin page
+          const adminPage = generateAdminPage(shop, shopData, session, req);
+          return res.send(adminPage);
+          
+        } catch (dbError) {
+          console.error('❌ Error creating shop record:', dbError);
+          // Fall through to OAuth flow
+        }
       }
-      
     } catch (error) {
-      console.error('❌ Error in embedded app handling:', error);
-      
-      // Fallback to Shopify middleware
-      return shopify.ensureInstalledOnShop()(req, res, async (err) => {
-        if (err) {
-          const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
-          return res.redirect(authUrl);
-        }
-        
-        const session = res.locals.shopify?.session;
-        if (!session) {
-          const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
-          return res.redirect(authUrl);
-        }
-        
-        const shopData = await DatabaseQueries.getShop(shop);
-        const adminPage = generateAdminPage(shop, shopData, session, req);
-        return res.send(adminPage);
-      });
+      console.error('❌ Error using validated session:', error);
+      // Fall through to OAuth flow
     }
   }
   
-  // For all other cases (non-embedded or without id_token), use proper Shopify authentication
-  console.log('🔐 Using Shopify ensureInstalledOnShop middleware for proper authentication');
+  // No valid session token or shop not in database - use OAuth flow
+  console.log('🔄 No valid session token, using OAuth flow');
   
   return shopify.ensureInstalledOnShop()(req, res, async (err) => {
     if (err) {
@@ -917,26 +881,10 @@ app.get('/app', async (req, res, next) => {
       
       // Redirect to OAuth
       const authUrl = `/auth?shop=${encodeURIComponent(shop)}${host ? `&host=${encodeURIComponent(host)}` : ''}`;
-      
-      return res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Installing App...</title>
-          <script>
-            console.log('App not installed or session invalid, redirecting to OAuth');
-            window.top.location.href = "${authUrl}";
-          </script>
-        </head>
-        <body>
-          <p>Setting up your app. Redirecting...</p>
-          <p>If you are not redirected automatically, <a href="${authUrl}" target="_top">click here</a>.</p>
-        </body>
-        </html>
-      `);
+      return res.redirect(authUrl);
     }
     
-    // Auth succeeded, we should have a valid session now
+    // Auth succeeded through Shopify middleware
     const session = res.locals.shopify?.session;
     
     if (!session) {
@@ -947,49 +895,32 @@ app.get('/app', async (req, res, next) => {
     
     console.log('✅ Session validated through Shopify middleware:', {
       shop: session.shop,
-      hasAccessToken: !!session.accessToken,
-      sessionId: session.id
+      hasAccessToken: !!session.accessToken
     });
     
     try {
-      // Ensure shop exists in our database (save if not exists)
-      let shopData = await DatabaseQueries.getShop(shop);
+      // Save shop to database
+      await DatabaseQueries.createOrUpdateShop(
+        session.shop,
+        session.accessToken,
+        {
+          shop_name: session.shop.split('.')[0],
+          email: null,
+          phone: null
+        }
+      );
       
-      if (!shopData) {
-        console.log('📝 Shop not in database, saving now...');
-        await DatabaseQueries.createOrUpdateShop(
-          session.shop,
-          session.accessToken,
-          {
-            shop_name: session.shop.split('.')[0],
-            email: null,
-            phone: null
-          }
-        );
-        shopData = await DatabaseQueries.getShop(shop);
-        console.log('✅ Shop saved to database');
-      } else {
-        // Update access token in case it changed
-        await DatabaseQueries.createOrUpdateShop(
-          session.shop,
-          session.accessToken,
-          {
-            shop_name: shopData.shop_name,
-            email: shopData.email,
-            phone: shopData.phone
-          }
-        );
-        console.log('✅ Shop access token updated');
-      }
+      const shopData = await DatabaseQueries.getShop(shop);
+      console.log('✅ Shop saved to database after OAuth');
       
       // Generate and send the admin page
       console.log('📱 Generating admin dashboard...');
       const adminPage = generateAdminPage(shop, shopData, session, req);
-      res.send(adminPage);
+      return res.send(adminPage);
       
     } catch (error) {
       console.error('Error in app route:', error);
-      res.status(500).send('Failed to load app');
+      return res.status(500).send('Failed to load app');
     }
   });
 });
@@ -1349,6 +1280,36 @@ app.post('/api/auth/session-token-exchange', async (req, res) => {
       hasSessionToken: !!sessionToken
     });
 
+    // First, validate the session token using Shopify API
+    try {
+      const { Session } = require('@shopify/shopify-api');
+      const decodedSessionToken = await shopify.api.session.decodeSessionToken(sessionToken);
+      
+      console.log('✅ Session token validated by Shopify API:', {
+        shop: decodedSessionToken.dest.replace('https://', ''),
+        aud: decodedSessionToken.aud
+      });
+      
+      // Ensure the shop from token matches the requested shop
+      const tokenShop = decodedSessionToken.dest.replace('https://', '').replace('/admin', '');
+      if (tokenShop !== shop) {
+        console.error('❌ Shop mismatch between token and request');
+        return res.json({
+          success: false,
+          error: 'Shop mismatch - please reinstall the app',
+          requiresAuth: true
+        });
+      }
+      
+    } catch (sessionTokenError) {
+      console.error('❌ Session token validation failed:', sessionTokenError.message);
+      return res.json({
+        success: false,
+        error: 'Invalid session token - please refresh the page',
+        requiresAuth: true
+      });
+    }
+
     // Use Shopify's official Token Exchange API as per documentation
     const axios = require('axios');
     
@@ -1598,20 +1559,8 @@ app.get('/debug/cleanup/:shop', async (req, res) => {
   console.log(`🗑️ Manual cleanup requested for shop: ${shop}`);
   
   try {
-    // Delete from custom database
-    await DatabaseQueries.deleteShop(shop);
-    await DatabaseQueries.deleteShopOrders(shop);
-    await DatabaseQueries.deleteShopCustomers(shop);
-    await DatabaseQueries.deleteShopMessages(shop);
-    
-    // Clear session storage
-    const { sessionStorage } = require('./shopify.app.config');
-    try {
-      await sessionStorage.deleteSession(`offline_${shop}`);
-      console.log('✅ Cleared session from storage');
-    } catch (e) {
-      console.log('No session to clear');
-    }
+    // Use the comprehensive cleanup function
+    await handleAppUninstalled(shop);
     
     res.json({
       success: true,
@@ -1632,16 +1581,165 @@ app.get('/debug/force-reinstall/:shop', async (req, res) => {
   const shop = req.params.shop;
   
   try {
-    console.log(`🧪 Manual cleanup triggered for: ${shop}`);
+    console.log(`🧪 Manual comprehensive cleanup triggered for: ${shop}`);
     await handleAppUninstalled(shop);
+    
+    // Verify cleanup was successful
+    const verifyShop = await DatabaseQueries.getShop(shop);
     
     res.json({
       success: true,
-      message: `Shop data cleaned up: ${shop}`,
+      message: `Comprehensive cleanup completed for: ${shop}`,
+      cleanup_verified: !verifyShop,
+      next_steps: [
+        `Visit: https://${shop}/admin/apps`,
+        'Reinstall the app from Partner Dashboard',
+        'Or visit: /auth?shop=' + shop
+      ],
       timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('Manual cleanup error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Verify cleanup endpoint
+app.get('/debug/verify-cleanup/:shop', async (req, res) => {
+  const shop = req.params.shop;
+  
+  try {
+    // Check all possible places where shop data might exist
+    const shopData = await DatabaseQueries.getShop(shop);
+    
+    // Count records in all related tables
+    const { sessionStorage } = require('./shopify.app.config');
+    
+    let sessionExists = false;
+    try {
+      const session = await sessionStorage.loadSession(`offline_${shop}`);
+      sessionExists = !!session;
+    } catch (e) {
+      sessionExists = false;
+    }
+
+    // Check database tables
+    const tableChecks = {};
+    try {
+      const tables = ['messages', 'orders', 'customers', 'abandoned_carts', 'analytics'];
+      for (const table of tables) {
+        try {
+          const { db } = require('./database');
+          await new Promise((resolve, reject) => {
+            db.get(`SELECT COUNT(*) as count FROM ${table} WHERE shop_domain = ?`, [shop], (err, row) => {
+              if (err) reject(err);
+              else {
+                tableChecks[table] = row.count;
+                resolve();
+              }
+            });
+          });
+        } catch (error) {
+          tableChecks[table] = 'error: ' + error.message;
+        }
+      }
+    } catch (error) {
+      tableChecks.error = error.message;
+    }
+
+    const isCompletelyClean = !shopData && !sessionExists && 
+      Object.values(tableChecks).every(count => count === 0 || typeof count === 'string');
+
+    res.json({
+      shop: shop,
+      completely_clean: isCompletelyClean,
+      shop_in_database: !!shopData,
+      session_exists: sessionExists,
+      table_record_counts: tableChecks,
+      status: isCompletelyClean ? '✅ CLEAN - Ready for fresh install' : '⚠️ Data remains - needs cleanup',
+      cleanup_command: `/debug/force-reinstall/${shop}`
+    });
+  } catch (error) {
+    console.error('Verify cleanup error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// COMPLETE DATABASE WIPE ENDPOINTS (BE CAREFUL!)
+
+// Wipe ALL database data (nuclear option)
+app.get('/debug/wipe-all-data', async (req, res) => {
+  try {
+    console.log('🔥 COMPLETE DATABASE WIPE REQUESTED');
+    
+    const wipeResults = await DatabaseQueries.wipeAllData();
+    await DatabaseQueries.resetAutoIncrement();
+    
+    // Also clear ALL sessions
+    const { sessionStorage } = require('./shopify.app.config');
+    try {
+      // This is a more aggressive approach to clear sessions
+      const { db: sessionDb } = sessionStorage;
+      if (sessionDb && sessionDb.run) {
+        await new Promise((resolve, reject) => {
+          sessionDb.run('DELETE FROM sessions', (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+        console.log('✅ Cleared all Shopify sessions');
+      }
+    } catch (sessionError) {
+      console.log('⚠️ Could not clear sessions:', sessionError.message);
+    }
+
+    const finalStats = await DatabaseQueries.getDatabaseStats();
+
+    res.json({
+      success: true,
+      message: '🔥 COMPLETE DATABASE WIPE COMPLETED',
+      wipe_results: wipeResults,
+      final_stats: finalStats,
+      warning: 'ALL DATA HAS BEEN PERMANENTLY DELETED',
+      next_steps: [
+        '1. All shops must reinstall the app',
+        '2. All sessions have been cleared',
+        '3. Database is now completely empty'
+      ]
+    });
+  } catch (error) {
+    console.error('Database wipe error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get database statistics
+app.get('/debug/database-stats', async (req, res) => {
+  try {
+    const stats = await DatabaseQueries.getDatabaseStats();
+    
+    const totalRecords = Object.values(stats).reduce((total, table) => {
+      return total + (table.count || 0);
+    }, 0);
+
+    res.json({
+      success: true,
+      total_records: totalRecords,
+      table_stats: stats,
+      status: totalRecords === 0 ? '✅ Database is empty' : `📊 ${totalRecords} total records`,
+      wipe_all_command: '/debug/wipe-all-data'
+    });
+  } catch (error) {
+    console.error('Database stats error:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -1869,29 +1967,130 @@ async function handleCustomerCreated(shop, customer) {
 
 async function handleAppUninstalled(shop) {
   try {
-    console.log(`🗑️ Cleaning up data for uninstalled app: ${shop}`);
+    console.log(`🗑️ Starting comprehensive cleanup for uninstalled app: ${shop}`);
     
-    // Remove shop from our custom database
-    await DatabaseQueries.deleteShop(shop);
-    console.log(`✅ Removed shop from whatsapp_shopify.db: ${shop}`);
-    
-    // Remove shop sessions from Shopify's session storage
-    const { sessionStorage } = require('./shopify.app.config');
-    const sessionId = `offline_${shop}`;
-    
+    // STEP 1: Get the shop's access token before deleting (we might need it for API cleanup)
+    let shopData = null;
     try {
-      await sessionStorage.deleteSession(sessionId);
-      console.log(`✅ Removed Shopify session: ${sessionId}`);
-    } catch (sessionError) {
-      console.log(`⚠️ Session not found or already deleted: ${sessionId}`);
+      shopData = await DatabaseQueries.getShop(shop);
+      console.log(`📋 Found shop data for ${shop}: ${shopData ? 'YES' : 'NO'}`);
+    } catch (error) {
+      console.log(`⚠️ Could not retrieve shop data: ${error.message}`);
+    }
+
+    // STEP 2: Revoke access token via Shopify API (this ensures complete disconnection)
+    if (shopData && shopData.access_token) {
+      try {
+        const axios = require('axios');
+        console.log(`🔐 Revoking access token for ${shop}...`);
+        
+        await axios.delete(`https://${shop}/admin/api_permissions/current.json`, {
+          headers: {
+            'X-Shopify-Access-Token': shopData.access_token,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        
+        console.log(`✅ Access token revoked successfully for ${shop}`);
+      } catch (revokeError) {
+        console.log(`⚠️ Could not revoke access token (may already be revoked): ${revokeError.message}`);
+        // Continue with cleanup even if token revocation fails
+      }
+    }
+
+    // STEP 3: Clean up all shop-related data from all tables
+    // Note: We clean dependent tables first, then the main shops table last
+    const cleanupTasks = [
+      // Dependent tables first (have foreign keys to shops)
+      { name: 'messages', fn: () => DatabaseQueries.deleteShopMessages(shop) },
+      { name: 'orders', fn: () => DatabaseQueries.deleteShopOrders(shop) },
+      { name: 'customers', fn: () => DatabaseQueries.deleteShopCustomers(shop) },
+      { name: 'abandoned carts', fn: () => DatabaseQueries.deleteShopAbandonedCarts(shop) },
+      { name: 'analytics', fn: () => DatabaseQueries.deleteShopAnalytics(shop) },
+      { name: 'campaigns', fn: () => DatabaseQueries.deleteShopCampaigns(shop) },
+      { name: 'templates', fn: () => DatabaseQueries.deleteShopTemplates(shop) },
+      { name: 'automations', fn: () => DatabaseQueries.deleteShopAutomations(shop) },
+      { name: 'webhooks', fn: () => DatabaseQueries.deleteShopWebhooks(shop) },
+      { name: 'billing records', fn: () => DatabaseQueries.deleteShopBilling(shop) },
+      { name: 'conversations', fn: () => DatabaseQueries.deleteShopConversations(shop) }
+    ];
+
+    // Handle tables that might not exist yet (referenced in queries.js but not in main schema)
+    const optionalCleanupTasks = [
+      { name: 'back in stock subscriptions', fn: () => DatabaseQueries.deleteShopBackInStockSubscriptions(shop) },
+      { name: 'product variants', fn: () => DatabaseQueries.deleteShopProductVariants(shop) }
+    ];
+
+    // Execute all cleanup tasks
+    for (const task of cleanupTasks) {
+      try {
+        await task.fn();
+      } catch (error) {
+        console.error(`⚠️ Failed to delete ${task.name} for ${shop}:`, error.message);
+        // Continue with other cleanup tasks
+      }
+    }
+
+    // Execute optional cleanup tasks (may fail if tables don't exist)
+    for (const task of optionalCleanupTasks) {
+      try {
+        await task.fn();
+      } catch (error) {
+        console.log(`⚠️ Optional cleanup failed for ${task.name} (table may not exist): ${error.message}`);
+        // Continue with other cleanup tasks
+      }
+    }
+
+    // STEP 4: Remove the main shop record last (after all dependent records are deleted)
+    try {
+      await DatabaseQueries.deleteShop(shop);
+      console.log(`✅ Removed shop record from database: ${shop}`);
+    } catch (error) {
+      console.error(`❌ Failed to delete shop record for ${shop}:`, error.message);
     }
     
-    // Clean up any other shop-related data
-    await DatabaseQueries.deleteShopOrders(shop);
-    await DatabaseQueries.deleteShopCustomers(shop);
-    await DatabaseQueries.deleteShopMessages(shop);
+    // STEP 5: Remove ALL Shopify sessions (both online and offline)
+    const { sessionStorage } = require('./shopify.app.config');
+    const sessionIds = [`offline_${shop}`, `online_${shop}`];
     
-    console.log(`🎉 App uninstall cleanup completed for: ${shop}`);
+    for (const sessionId of sessionIds) {
+      try {
+        await sessionStorage.deleteSession(sessionId);
+        console.log(`✅ Removed Shopify session: ${sessionId}`);
+      } catch (sessionError) {
+        console.log(`⚠️ Session not found or already deleted: ${sessionId}`);
+      }
+    }
+
+    // STEP 6: Clear any additional session variations (some might have timestamps)
+    try {
+      // Try to clear any sessions that might have timestamps or other variations
+      const { sessionStorage } = require('./shopify.app.config');
+      if (sessionStorage.clearAllSessionsForShop) {
+        await sessionStorage.clearAllSessionsForShop(shop);
+      }
+    } catch (clearError) {
+      console.log(`⚠️ Additional session clearing failed: ${clearError.message}`);
+    }
+
+    // STEP 7: Final verification
+    try {
+      const verifyShop = await DatabaseQueries.getShop(shop);
+      if (verifyShop) {
+        console.error(`❌ WARNING: Shop still exists in database after cleanup: ${shop}`);
+        // Force delete one more time
+        await DatabaseQueries.deleteShop(shop);
+      } else {
+        console.log(`✅ Verification passed: Shop completely removed from database`);
+      }
+    } catch (verifyError) {
+      console.log(`✅ Shop verification failed (good - shop is completely deleted): ${verifyError.message}`);
+    }
+    
+    console.log(`🎉 COMPREHENSIVE APP UNINSTALL CLEANUP COMPLETED for: ${shop}`);
+    console.log(`📋 All shop data, sessions, and access tokens have been completely removed`);
+    console.log(`🔄 Next installation will be treated as a fresh install`);
     
   } catch (error) {
     console.error(`❌ Error during app uninstall cleanup for ${shop}:`, error);

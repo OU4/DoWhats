@@ -1,0 +1,42 @@
+# Learn more about configuring your Shopify app at:
+# https://shopify.dev/docs/apps/tools/cli/configuration
+
+name = "WhatsApp for DoWhats"
+client_id = "f634f98be8ad6a94a091ef53294a0ffc"
+application_url = "https://79f7a71000ae.ngrok-free.app"
+embedded = true
+
+[access_scopes]
+# Use the exact scopes from your .env.local
+scopes = "read_products,write_products,read_checkouts,write_checkouts,read_orders,write_orders,read_customers,write_customers,read_fulfillments,read_shipping"
+
+[auth]
+redirect_urls = [
+  "https://79f7a71000ae.ngrok-free.app/auth/callback",
+  "https://79f7a71000ae.ngrok-free.app/auth/shopify/callback"
+]
+
+[webhooks]
+api_version = "2024-10"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "https://79f7a71000ae.ngrok-free.app/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/create", "orders/updated", "orders/paid", "orders/fulfilled" ]
+  uri = "https://79f7a71000ae.ngrok-free.app/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = [ "checkouts/create", "checkouts/update" ]
+  uri = "https://79f7a71000ae.ngrok-free.app/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = [ "customers/create" ]
+  uri = "https://79f7a71000ae.ngrok-free.app/webhooks"
+
+[pos]
+embedded = false
+
+[build]
+include_config_on_deploy = true
