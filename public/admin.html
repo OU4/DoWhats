@@ -290,31 +290,31 @@
                 <h2>📊 Statistics</h2>
                 <div class="stat">
                     <span class="stat-label">Messages Sent Today</span>
-                    <span class="stat-value">47</span>
+                    <span class="stat-value">0</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">Abandoned Carts Recovered</span>
-                    <span class="stat-value">12</span>
+                    <span class="stat-label">Customers with WhatsApp</span>
+                    <span class="stat-value">0</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">Active Conversations</span>
-                    <span class="stat-value">8</span>
+                    <span class="stat-label">Total Messages Sent</span>
+                    <span class="stat-value">0</span>
                 </div>
             </div>
             
             <div class="card">
                 <h2>💰 Revenue Impact</h2>
                 <div class="stat">
-                    <span class="stat-label">Revenue from WhatsApp</span>
-                    <span class="stat-value">$3,428</span>
+                    <span class="stat-label">Revenue (30 days)</span>
+                    <span class="stat-value">$0.00</span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">Conversion Rate</span>
-                    <span class="stat-value">24.5%</span>
+                    <span class="stat-label">WhatsApp Conversion Rate</span>
+                    <span class="stat-value">0%</span>
                 </div>
                 <div class="stat">
                     <span class="stat-label">Avg. Order Value</span>
-                    <span class="stat-value">$127</span>
+                    <span class="stat-value">$0.00</span>
                 </div>
             </div>
             
@@ -344,6 +344,21 @@
                     </button>
                     
                     <div id="testResult" style="margin-top: 10px; display: none;"></div>
+                    
+                    <!-- Template Test Section -->
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+                        <h4 style="margin-bottom: 10px; font-size: 14px;">Test Notification Templates</h4>
+                        <select id="templateSelect" style="margin-bottom: 10px; width: 100%;">
+                            <option value="order_placed">Order Confirmation</option>
+                            <option value="abandoned_cart_1h">Abandoned Cart</option>
+                            <option value="welcome_customer">Welcome Message</option>
+                            <option value="order_fulfilled">Shipping Update</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="sendTemplateTest()">
+                            Test Template
+                        </button>
+                        <div id="templateResult" style="margin-top: 10px; display: none;"></div>
+                    </div>
                 </div>
                 
                 <!-- Other buttons -->
@@ -606,19 +621,99 @@ function sendWhatsAppTest() {
             // In production, gather all settings and save to backend
         }
         
-        // Load stats on page load
+        // Load real stats on page load
         window.addEventListener('DOMContentLoaded', function() {
             console.log('Dashboard loaded successfully!');
-            // In production, load real stats:
-            /*
-            fetch('/api/stats')
+            loadRealStats();
+        });
+        
+        // Get session token from URL params for API requests
+        function getSessionToken() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('id_token');
+        }
+
+        // Send template test message
+        function sendTemplateTest() {
+            const template = document.getElementById('templateSelect').value;
+            const resultDiv = document.getElementById('templateResult');
+            
+            // Show loading
+            resultDiv.style.display = 'block';
+            resultDiv.style.color = '#666';
+            resultDiv.innerHTML = '⏳ Sending template test...';
+            
+            const sessionToken = getSessionToken();
+            const headers = {};
+            
+            if (sessionToken) {
+                headers['Authorization'] = `Bearer ${sessionToken}`;
+            }
+            
+            fetch(`/api/test-notifications/${template}`, { headers })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        resultDiv.style.color = 'green';
+                        resultDiv.innerHTML = `✅ ${template} template sent successfully!<br>Message ID: ${data.messageSid}`;
+                    } else {
+                        resultDiv.style.color = 'red';
+                        resultDiv.innerHTML = `❌ Failed: ${data.error}`;
+                    }
+                })
+                .catch(error => {
+                    resultDiv.style.color = 'red';
+                    resultDiv.innerHTML = `❌ Error: ${error.message}`;
+                });
+        }
+
+        // Load real statistics from Shopify store
+        function loadRealStats() {
+            const sessionToken = getSessionToken();
+            const headers = {};
+            
+            if (sessionToken) {
+                headers['Authorization'] = `Bearer ${sessionToken}`;
+            }
+            
+            fetch('/api/stats', { headers })
                 .then(response => response.json())
                 .then(stats => {
-                    // Update the UI with real stats
-                    document.querySelector('.stat-value').textContent = stats.messagesCount;
+                    console.log('Real stats loaded:', stats);
+                    
+                    // Update Statistics section
+                    const statValues = document.querySelectorAll('.stat-value');
+                    if (statValues[0]) statValues[0].textContent = stats.messagesToday;
+                    if (statValues[1]) statValues[1].textContent = stats.customersWithPhone;
+                    if (statValues[2]) statValues[2].textContent = stats.totalMessages;
+                    
+                    // Update Revenue Impact section  
+                    if (statValues[3]) statValues[3].textContent = `${stats.currencyCode} ${stats.revenue30Days}`;
+                    if (statValues[4]) statValues[4].textContent = `${stats.conversionRate}%`;
+                    if (statValues[5]) statValues[5].textContent = `${stats.currencyCode} ${stats.avgOrderValue}`;
+                    
+                    // Update status
+                    const statusElement = document.querySelector('.status');
+                    if (statusElement) {
+                        if (stats.messagesToday > 0 || stats.totalMessages > 0) {
+                            statusElement.textContent = 'Active';
+                            statusElement.className = 'status active';
+                        } else {
+                            statusElement.textContent = 'Ready';
+                            statusElement.className = 'status inactive';
+                        }
+                    }
+                    
+                    // Show error if data fetch failed
+                    if (stats.error) {
+                        console.warn('Using fallback data:', stats.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading stats:', error);
+                    // Keep mock data as fallback
                 });
-            */
-        });
+        }
     </script>
 </body>
 </html>

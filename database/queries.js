@@ -447,6 +447,59 @@ static disableCustomer(customerId) {
     });
   }
 
+  static createMessage(shopDomain, customerPhone, messageBody, direction = 'outbound', orderNumber = null, twilioSid = null) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        INSERT INTO messages (
+          shop_domain, customer_phone, message_body, direction, 
+          order_number, twilio_sid, twilio_status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 'sent', CURRENT_TIMESTAMP)
+      `;
+      
+      db.run(query, [
+        shopDomain,
+        customerPhone,
+        messageBody,
+        direction,
+        orderNumber,
+        twilioSid
+      ], function(err) {
+        if (err) reject(err);
+        else resolve(this.lastID);
+      });
+    });
+  }
+
+  static getShopMessages(shopDomain) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT * FROM messages 
+        WHERE shop_domain = ? 
+        ORDER BY created_at DESC
+      `;
+      
+      db.all(query, [shopDomain], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+  }
+
+  static getCustomerMessages(shopDomain, customerPhone) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT * FROM messages 
+        WHERE shop_domain = ? AND customer_phone = ?
+        ORDER BY created_at ASC
+      `;
+      
+      db.all(query, [shopDomain, customerPhone], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+  }
+
   static updateMessageStatus(twilioSid, status, deliveredAt = null) {
     return new Promise((resolve, reject) => {
       db.run(
@@ -1060,6 +1113,24 @@ static disableCustomer(customerId) {
             resolve(stats);
           }
         });
+      });
+    });
+  }
+
+  static getCustomersWithPhoneCount(shopDomain) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT COUNT(*) as count 
+        FROM customers 
+        WHERE shop_domain = ? 
+        AND customer_phone IS NOT NULL 
+        AND customer_phone != ''
+        AND opted_in = 1
+      `;
+      
+      db.get(query, [shopDomain], (err, row) => {
+        if (err) reject(err);
+        else resolve(row?.count || 0);
       });
     });
   }

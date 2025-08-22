@@ -3,7 +3,7 @@
 
 name = "WhatsApp for DoWhats"
 client_id = "f634f98be8ad6a94a091ef53294a0ffc"
-application_url = "https://79f7a71000ae.ngrok-free.app"
+application_url = "https://f44d8241da37.ngrok-free.app"
 embedded = true
 
 [access_scopes]
@@ -12,8 +12,8 @@ scopes = "read_products,write_products,read_checkouts,write_checkouts,read_order
 
 [auth]
 redirect_urls = [
-  "https://79f7a71000ae.ngrok-free.app/auth/callback",
-  "https://79f7a71000ae.ngrok-free.app/auth/shopify/callback"
+  "https://f44d8241da37.ngrok-free.app/auth/callback",
+  "https://f44d8241da37.ngrok-free.app/auth/shopify/callback"
 ]
 
 [webhooks]
@@ -21,19 +21,23 @@ api_version = "2024-10"
 
   [[webhooks.subscriptions]]
   topics = [ "app/uninstalled" ]
-  uri = "https://79f7a71000ae.ngrok-free.app/webhooks"
+  uri = "https://f44d8241da37.ngrok-free.app/webhooks"
 
   [[webhooks.subscriptions]]
   topics = [ "orders/create", "orders/updated", "orders/paid", "orders/fulfilled" ]
-  uri = "https://79f7a71000ae.ngrok-free.app/webhooks"
+  uri = "https://f44d8241da37.ngrok-free.app/webhooks"
 
   [[webhooks.subscriptions]]
   topics = [ "checkouts/create", "checkouts/update" ]
-  uri = "https://79f7a71000ae.ngrok-free.app/webhooks"
+  uri = "https://f44d8241da37.ngrok-free.app/webhooks"
 
   [[webhooks.subscriptions]]
   topics = [ "customers/create" ]
-  uri = "https://79f7a71000ae.ngrok-free.app/webhooks"
+  uri = "https://f44d8241da37.ngrok-free.app/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/cancelled", "orders/edited" ]
+  uri = "https://f44d8241da37.ngrok-free.app/webhooks"
 
 [pos]
 embedded = false

@@ -156,10 +156,21 @@ class NotificationManager {
         };
       }
 
+      // Ensure proper WhatsApp format for both numbers
+      const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER.startsWith('whatsapp:') 
+        ? process.env.TWILIO_WHATSAPP_NUMBER 
+        : `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
+        
+      const toNumber = customerPhone.startsWith('whatsapp:') 
+        ? customerPhone 
+        : `whatsapp:${customerPhone}`;
+
+      console.log('📱 NotificationManager sending from:', fromNumber, 'to:', toNumber);
+
       // Send WhatsApp message
       const result = await twilioClient.messages.create({
-        from: process.env.TWILIO_WHATSAPP_NUMBER,
-        to: `whatsapp:${customerPhone}`,
+        from: fromNumber,
+        to: toNumber,
         body: message
       });
 
@@ -167,7 +178,7 @@ class NotificationManager {
       await DatabaseQueries.saveMessage({
         shop_domain: shopDomain,
         customer_phone: customerPhone,
-        customer_name: data.customer_name,
+        customer_name: data.customer_name || null,
         message_type: notificationType,
         message_body: message,
         twilio_sid: result.sid,
@@ -249,11 +260,16 @@ class NotificationManager {
   // Create customer in database
   async createCustomer(shopDomain, customerPhone, customerName) {
     return new Promise((resolve, reject) => {
+      // Split customer name into first_name and last_name to match database schema
+      const names = (customerName || '').split(' ');
+      const firstName = names[0] || null;
+      const lastName = names.slice(1).join(' ') || null;
+      
       db.run(
         `INSERT OR IGNORE INTO customers (
-          shop_domain, customer_phone, customer_name, opted_in, created_at, updated_at
-        ) VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        [shopDomain, customerPhone, customerName || null],
+          shop_domain, customer_phone, first_name, last_name, opted_in, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        [shopDomain, customerPhone, firstName, lastName],
         function(err) {
           if (err) reject(err);
           else resolve(this.lastID);
@@ -274,6 +290,61 @@ class NotificationManager {
         }
       );
     });
+  }
+
+  // Send custom message (for manual messages from dashboard)
+  async sendCustomMessage(shopDomain, customerPhone, messageBody, orderNumber = null) {
+    try {
+      // Check if Twilio is configured
+      if (!twilioClient) {
+        console.warn(`⚠️ Twilio not configured. Would send custom message to ${customerPhone}`);
+        return {
+          success: false,
+          error: 'Twilio not configured'
+        };
+      }
+
+      // Ensure proper WhatsApp format for both numbers
+      const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER.startsWith('whatsapp:') 
+        ? process.env.TWILIO_WHATSAPP_NUMBER 
+        : `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
+        
+      const toNumber = customerPhone.startsWith('whatsapp:') 
+        ? customerPhone 
+        : `whatsapp:${customerPhone}`;
+
+      console.log('📱 Sending custom message from:', fromNumber, 'to:', toNumber);
+
+      // Send WhatsApp message
+      const result = await twilioClient.messages.create({
+        from: fromNumber,
+        to: toNumber,
+        body: messageBody
+      });
+
+      // Save to database
+      await DatabaseQueries.createMessage(
+        shopDomain,
+        customerPhone.replace('whatsapp:', ''),
+        messageBody,
+        'outbound',
+        orderNumber,
+        result.sid
+      );
+
+      return {
+        success: true,
+        messageSid: result.sid,
+        phone: customerPhone
+      };
+
+    } catch (error) {
+      console.error(`❌ Failed to send custom message:`, error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
   }
 
   // Batch send notifications
