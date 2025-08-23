@@ -1381,6 +1381,55 @@ static disableCustomer(customerId) {
       });
     });
   }
+
+  // ========== MESSAGE CONVERSATION OPERATIONS ==========
+
+  static getRecentConversations(shopDomain, limit = 20) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT 
+          m.*,
+          c.first_name,
+          c.last_name,
+          COALESCE(c.first_name || ' ' || c.last_name, c.customer_email, 'Unknown Customer') as customer_name
+        FROM messages m
+        LEFT JOIN customers c ON m.shop_domain = c.shop_domain AND m.customer_phone = c.customer_phone
+        WHERE m.shop_domain = ?
+        ORDER BY m.created_at DESC
+        LIMIT ?
+      `;
+      
+      db.all(query, [shopDomain, limit * 3], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+  }
+
+  static saveWhatsAppMessage(messageData) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        INSERT INTO messages (
+          shop_domain, customer_phone, customer_name, message_body,
+          direction, message_sid, status, template_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `;
+      
+      db.run(query, [
+        messageData.shop_domain,
+        messageData.customer_phone,
+        messageData.customer_name || 'Unknown',
+        messageData.message_body,
+        messageData.direction || 'outbound',
+        messageData.message_sid,
+        messageData.status || 'sent',
+        messageData.template_id || 'manual'
+      ], function(err) {
+        if (err) reject(err);
+        else resolve({ id: this.lastID, success: true });
+      });
+    });
+  }
 }
 
 

@@ -8,7 +8,7 @@ embedded = true
 
 [access_scopes]
 # Use the exact scopes from your .env.local
-scopes = "read_products,write_products,read_checkouts,write_checkouts,read_orders,write_orders,read_customers,write_customers,read_fulfillments,read_shipping"
+scopes = "read_products,write_products,read_checkouts,write_checkouts,read_orders,write_orders,read_customers,write_customers,read_fulfillments,read_shipping,write_fulfillments,read_inventory,write_inventory,read_marketing_events,write_marketing_events,read_discounts,write_discounts,read_analytics,read_reports"
 
 [auth]
 redirect_urls = [

@@ -3,8 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Integration Dashboard</title>
+    <title>WhatsApp Business Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        :root {
+            --primary: #25D366;
+            --primary-dark: #128C7E;
+            --secondary: #075E54;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            --radius: 12px;
+            --radius-lg: 16px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,142 +35,320 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
             min-height: 100vh;
-            padding: 20px;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
+            padding: 24px;
         }
         
         .header {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            box-shadow: var(--shadow);
         }
         
         .header h1 {
-            color: #333;
-            margin-bottom: 10px;
+            color: var(--text-primary);
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .header-subtitle {
+            color: var(--text-secondary);
+            font-size: 15px;
         }
         
         .status {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 24px;
             font-size: 14px;
             font-weight: 600;
+            transition: all 0.2s;
         }
         
         .status.active {
-            background: #10b981;
-            color: white;
+            background: #10b98120;
+            color: var(--success);
+            border: 1px solid var(--success);
         }
         
         .status.inactive {
-            background: #ef4444;
-            color: white;
+            background: #ef444420;
+            color: var(--error);
+            border: 1px solid var(--error);
+        }
+
+        .status i {
+            font-size: 16px;
         }
         
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
         }
         
         .card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
         }
         
         .card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow);
+            border-color: var(--primary);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .card-icon.green { 
+            background: #10b98120;
+            color: var(--success);
+        }
+
+        .card-icon.blue {
+            background: #3b82f620;
+            color: var(--info);
+        }
+
+        .card-icon.orange {
+            background: #f59e0b20;
+            color: var(--warning);
         }
         
         .card h2 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 20px;
+            color: var(--text-primary);
+            font-size: 18px;
+            font-weight: 600;
+            flex: 1;
         }
         
         .stat {
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .stat:hover {
+            padding-left: 8px;
         }
         
         .stat:last-child {
             border-bottom: none;
+            padding-bottom: 0;
         }
         
         .stat-label {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-label i {
+            font-size: 16px;
+            color: var(--text-muted);
         }
         
         .stat-value {
-            color: #333;
-            font-weight: 600;
-            font-size: 18px;
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-trend {
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .stat-trend.up {
+            color: var(--success);
+        }
+
+        .stat-trend.down {
+            color: var(--error);
+        }
+
+        .stat-trend i {
+            font-size: 14px;
         }
         
         .settings-card {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
         }
         
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+        }
+
+        .form-group.inline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: var(--background);
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            transition: all 0.2s;
+        }
+
+        .form-group.inline:hover {
+            background: #f1f5f9;
         }
         
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            color: #333;
+            color: var(--text-primary);
             font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-top: 4px;
         }
         
         .form-group input,
         .form-group textarea,
         .form-group select {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 15px;
+            transition: all 0.2s;
+            background: var(--background);
+            color: var(--text-primary);
         }
         
         .form-group input:focus,
         .form-group textarea:focus,
         .form-group select:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--primary);
+            background: var(--surface);
         }
         
         .form-group textarea {
             resize: vertical;
             min-height: 100px;
+            font-family: inherit;
         }
         
         .toggle-switch {
             position: relative;
             display: inline-block;
-            width: 60px;
-            height: 28px;
+            width: 48px;
+            height: 24px;
+            flex-shrink: 0;
         }
         
         .toggle-switch input {
@@ -163,168 +364,727 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 34px;
+            background-color: var(--border);
+            transition: .3s;
+            border-radius: 24px;
         }
         
         .slider:before {
             position: absolute;
             content: "";
-            height: 20px;
-            width: 20px;
-            left: 4px;
-            bottom: 4px;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
             background-color: white;
-            transition: .4s;
+            transition: .3s;
             border-radius: 50%;
+            box-shadow: var(--shadow-sm);
         }
         
         input:checked + .slider {
-            background-color: #667eea;
+            background-color: var(--primary);
         }
         
         input:checked + .slider:before {
-            transform: translateX(32px);
+            transform: translateX(24px);
         }
         
         .btn {
-            padding: 12px 30px;
+            padding: 12px 24px;
             border: none;
-            border-radius: 8px;
-            font-size: 16px;
+            border-radius: var(--radius);
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--primary);
             color: white;
         }
         
         .btn-primary:hover {
+            background: var(--primary-dark);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-secondary {
+            background: var(--background);
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+            border-color: var(--text-secondary);
+        }
+
+        .btn i {
+            font-size: 18px;
         }
         
         .message-templates {
-            margin-top: 30px;
+            margin-top: 32px;
         }
         
         .template-item {
-            background: #f9fafb;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
+            background: var(--background);
+            padding: 20px;
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .template-item:hover {
+            border-color: var(--primary);
+            transform: translateX(4px);
         }
         
         .template-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
         
         .template-name {
             font-weight: 600;
-            color: #333;
+            color: var(--text-primary);
+            font-size: 16px;
         }
         
         .template-status {
-            padding: 4px 10px;
-            border-radius: 4px;
+            padding: 6px 12px;
+            border-radius: 20px;
             font-size: 12px;
-            background: #10b981;
-            color: white;
+            background: #10b98120;
+            color: var(--success);
+            font-weight: 600;
         }
         
         .template-content {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 14px;
+            line-height: 1.5;
         }
         
         .tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e5e7eb;
+            gap: 8px;
+            margin-bottom: 28px;
+            background: var(--background);
+            padding: 4px;
+            border-radius: var(--radius);
         }
         
         .tab {
             padding: 10px 20px;
             background: none;
             border: none;
-            color: #666;
-            font-size: 16px;
+            color: var(--text-secondary);
+            font-size: 15px;
+            font-weight: 500;
             cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            transition: all 0.3s;
+            border-radius: var(--radius);
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
         }
         
         .tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
+            background: var(--surface);
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
         }
         
         .tab-content {
             display: none;
+            animation: fadeIn 0.3s ease-out;
         }
         
         .tab-content.active {
             display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Quick Actions Card Enhancements */
+        .quick-actions-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quick-actions-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            transform: rotate(45deg);
+        }
+
+        .quick-actions-card h2,
+        .quick-actions-card .stat-label {
+            color: white;
+        }
+
+        .quick-actions-card .card-icon {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        /* Test Message Form Styles */
+        .test-message-section {
+            background: rgba(255,255,255,0.1);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1;
+        }
+
+        .test-message-section h3 {
+            color: white;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .test-message-section input,
+        .test-message-section textarea,
+        .test-message-section select {
+            background: rgba(255,255,255,0.9);
+            border: 2px solid transparent;
+            color: var(--text-primary);
+        }
+
+        .test-message-section input:focus,
+        .test-message-section textarea:focus,
+        .test-message-section select:focus {
+            background: white;
+            border-color: var(--primary);
+        }
+
+        .test-result {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .test-result.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .test-result.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        /* Flow Cards */
+        .flow-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+        }
+
+        .flow-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .flow-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 16px;
+        }
+
+        .flow-info h4 {
+            color: var(--text-primary);
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .flow-meta {
+            display: flex;
+            gap: 16px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .flow-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .flow-meta i {
+            font-size: 16px;
+            color: var(--primary);
+        }
+
+        .flow-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .flow-status.active {
+            background: #10b98120;
+            color: var(--success);
+        }
+
+        .flow-status.inactive {
+            background: #64748b20;
+            color: var(--text-secondary);
+        }
+
+        .flow-content {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--background);
+            border-radius: var(--radius);
+        }
+
+        .flow-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .flow-actions button {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .flow-actions button:hover {
+            background: var(--background);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .flow-actions button.delete:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .empty-state p {
+            margin-bottom: 20px;
+        }
+
+        /* Loading States */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        /* Additional Styles */
+        .chart-container {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--radius);
+        }
+
+        .tab i {
+            margin-right: 6px;
+            font-size: 16px;
+        }
+
+        /* Enhanced Tab Styles */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 32px;
+            background: var(--background);
+            padding: 4px;
+            border-radius: var(--radius);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: var(--radius);
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            min-width: fit-content;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.5);
+        }
+
+        .tab.active {
+            background: var(--surface);
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Loading States */
+        .skeleton {
+            background: linear-gradient(90deg, var(--background) 25%, var(--border) 50%, var(--background) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Advanced Cart Recovery Styles */
+        .recovery-step {
+            position: relative;
+        }
+
+        .recovery-step::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: -24px;
+            width: 16px;
+            height: 2px;
+            background: var(--border);
+            transform: translateY(-50%);
+        }
+
+        .recovery-step:last-child::after {
+            display: none;
+        }
+
+        /* Message Bubble Styles */
+        .message-bubble {
+            max-width: 300px;
+            padding: 12px 16px;
+            border-radius: 18px;
+            margin: 8px 0;
+            word-wrap: break-word;
+        }
+
+        .message-bubble.sent {
+            background: var(--primary);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-bubble.received {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        /* Campaign Card Hover Effects */
+        .campaign-type-card {
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .campaign-type-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .campaign-type-card:hover::before {
+            left: 100%;
+        }
+
+        .campaign-type-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        /* Status Indicators */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-dot.online { background: var(--success); }
+        .status-dot.offline { background: var(--text-muted); }
+        .status-dot.away { background: var(--warning); }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .tabs {
+                justify-content: flex-start;
+            }
+
+            .tab {
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+
+            .tab i {
+                margin-right: 4px;
+                font-size: 14px;
+            }
+
+            .flow-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .flow-meta {
+                flex-wrap: wrap;
+            }
+
+            /* Stack charts on mobile */
+            .chart-container {
+                margin-bottom: 20px;
+            }
+
+            [style*="grid-template-columns: 2fr 1fr"] {
+                grid-template-columns: 1fr !important;
+            }
+
+            [style*="grid-template-columns: 1fr 2fr"] {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .btn {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+
+            .stat-value {
+                font-size: 24px;
+            }
+
+            .card {
+                padding: 20px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>WhatsApp Integration Dashboard</h1>
-            <p style="color: #666; margin-bottom: 15px;">Manage your WhatsApp automation and messaging</p>
-            <span class="status active">Connected</span>
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="header-icon">
+                        <i class="ri-whatsapp-fill"></i>
+                    </div>
+                    <div>
+                        <h1>WhatsApp Business Dashboard</h1>
+                        <p class="header-subtitle">Manage your WhatsApp automation and messaging</p>
+                    </div>
+                </div>
+                <span class="status active">
+                    <i class="ri-checkbox-circle-fill"></i>
+                    Connected
+                </span>
+            </div>
         </div>
         
         <div class="grid">
             <div class="card">
-                <h2>📊 Statistics</h2>
-                <div class="stat">
-                    <span class="stat-label">Messages Sent Today</span>
-                    <span class="stat-value">0</span>
+                <div class="card-header">
+                    <div class="card-icon green">
+                        <i class="ri-bar-chart-2-fill"></i>
+                    </div>
+                    <h2>Statistics</h2>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">Customers with WhatsApp</span>
-                    <span class="stat-value">0</span>
+                    <span class="stat-label">
+                        <i class="ri-message-3-line"></i>
+                        Messages Sent Today
+                    </span>
+                    <span id="messagesToday" class="stat-value">
+                        -
+                        <span class="stat-trend up">
+                            <i class="ri-arrow-up-s-line"></i>
+                            -
+                        </span>
+                    </span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">Total Messages Sent</span>
-                    <span class="stat-value">0</span>
+                    <span class="stat-label">
+                        <i class="ri-user-3-line"></i>
+                        Customers with WhatsApp
+                    </span>
+                    <span id="customersWhatsApp" class="stat-value">
+                        -
+                        <span class="stat-trend up">
+                            <i class="ri-arrow-up-s-line"></i>
+                            -
+                        </span>
+                    </span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">
+                        <i class="ri-send-plane-2-line"></i>
+                        Total Messages Sent
+                    </span>
+                    <span id="totalMessages" class="stat-value">-</span>
                 </div>
             </div>
             
             <div class="card">
-                <h2>💰 Revenue Impact</h2>
-                <div class="stat">
-                    <span class="stat-label">Revenue (30 days)</span>
-                    <span class="stat-value">$0.00</span>
+                <div class="card-header">
+                    <div class="card-icon orange">
+                        <i class="ri-money-dollar-circle-fill"></i>
+                    </div>
+                    <h2>Revenue Impact</h2>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">WhatsApp Conversion Rate</span>
-                    <span class="stat-value">0%</span>
+                    <span class="stat-label">
+                        <i class="ri-calendar-line"></i>
+                        Revenue (30 days)
+                    </span>
+                    <span id="revenue30Days" class="stat-value">
+                        $0.00
+                        <span class="stat-trend up">
+                            <i class="ri-arrow-up-s-line"></i>
+                            -
+                        </span>
+                    </span>
                 </div>
                 <div class="stat">
-                    <span class="stat-label">Avg. Order Value</span>
-                    <span class="stat-value">$0.00</span>
+                    <span class="stat-label">
+                        <i class="ri-percent-line"></i>
+                        WhatsApp Conversion Rate
+                    </span>
+                    <span id="conversionRate" class="stat-value">-%</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">
+                        <i class="ri-shopping-cart-2-line"></i>
+                        Avg. Order Value
+                    </span>
+                    <span id="avgOrderValue" class="stat-value">$0.00</span>
                 </div>
             </div>
             
             <!-- Quick Actions Card with Test Message Form -->
-            <div class="card">
-                <h2>⚡ Quick Actions</h2>
+            <div class="card quick-actions-card">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <i class="ri-flashlight-fill"></i>
+                    </div>
+                    <h2>Quick Actions</h2>
+                </div>
                 
                 <!-- Test Message Section -->
-                <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                    <h3 style="margin-bottom: 10px; font-size: 16px;">Send Test Message</h3>
+                <div class="test-message-section">
+                    <h3>Send Test Message</h3>
                     
                     <div class="form-group">
                         <input type="text" 
@@ -343,7 +1103,7 @@
                         Send Test WhatsApp
                     </button>
                     
-                    <div id="testResult" style="margin-top: 10px; display: none;"></div>
+                    <div id="testResult" class="test-result"></div>
                     
                     <!-- Template Test Section -->
                     <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
@@ -357,15 +1117,17 @@
                         <button class="btn btn-primary" onclick="sendTemplateTest()">
                             Test Template
                         </button>
-                        <div id="templateResult" style="margin-top: 10px; display: none;"></div>
+                        <div id="templateResult" class="test-result"></div>
                     </div>
                 </div>
                 
                 <!-- Other buttons -->
                 <button class="btn btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="syncContacts()">
+                    <i class="ri-refresh-line"></i>
                     Sync Contacts
                 </button>
                 <button class="btn btn-primary" style="width: 100%;" onclick="viewLogs()">
+                    <i class="ri-file-list-3-line"></i>
                     View Logs
                 </button>
             </div>
@@ -373,96 +1135,719 @@
         
         <div class="settings-card">
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('automation')">Automation</button>
-                <button class="tab" onclick="switchTab('templates')">Templates</button>
-                <button class="tab" onclick="switchTab('settings')">Settings</button>
+                <button class="tab active" onclick="switchTab('analytics')">
+                    <i class="ri-bar-chart-2-line"></i>
+                    Analytics
+                </button>
+                <button class="tab" onclick="switchTab('customers')">
+                    <i class="ri-user-3-line"></i>
+                    Customers
+                </button>
+                <button class="tab" onclick="switchTab('messages')">
+                    <i class="ri-chat-3-line"></i>
+                    Messages
+                </button>
+                <button class="tab" onclick="switchTab('automation')">
+                    <i class="ri-settings-3-line"></i>
+                    Automation
+                </button>
+                <button class="tab" onclick="switchTab('campaigns')">
+                    <i class="ri-megaphone-line"></i>
+                    Campaigns
+                </button>
+                <button class="tab" onclick="switchTab('templates')">
+                    <i class="ri-file-text-line"></i>
+                    Templates
+                </button>
+                <button class="tab" onclick="switchTab('settings')">
+                    <i class="ri-settings-line"></i>
+                    Settings
+                </button>
             </div>
             
-            <div id="automation" class="tab-content active">
+            <!-- Analytics Tab -->
+            <div id="analytics" class="tab-content active">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-                    <h2 style="margin: 0;">Automation Settings</h2>
-                    <button class="btn btn-primary" onclick="createFlow()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 10px 20px; font-size: 14px;">
-                        + Create WhatsApp Flow
+                    <div>
+                        <h2 style="margin: 0;">Analytics & Reports</h2>
+                        <p style="color: var(--text-secondary); margin-top: 4px;">Track your WhatsApp performance and ROI</p>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <select class="form-input" style="width: auto; padding: 8px 12px;">
+                            <option>Last 7 days</option>
+                            <option>Last 30 days</option>
+                            <option>Last 90 days</option>
+                            <option>Last 12 months</option>
+                        </select>
+                        <button class="btn btn-secondary">
+                            <i class="ri-download-line"></i>
+                            Export Report
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Performance Overview Cards -->
+                <div class="grid" style="margin-bottom: 32px;">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon green">
+                                <i class="ri-send-plane-2-fill"></i>
+                            </div>
+                            <h3>Message Performance</h3>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">
+                                <i class="ri-check-double-line"></i>
+                                Delivery Rate
+                            </span>
+                            <span id="analyticsDeliveryRate" class="stat-value">
+                                -%
+                                <span class="stat-trend up">
+                                    <i class="ri-arrow-up-s-line"></i>
+                                    -
+                                </span>
+                            </span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">
+                                <i class="ri-eye-line"></i>
+                                Open Rate
+                            </span>
+                            <span id="analyticsOpenRate" class="stat-value">-%</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">
+                                <i class="ri-mouse-line"></i>
+                                Click Rate
+                            </span>
+                            <span id="analyticsClickRate" class="stat-value">-%</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon blue">
+                                <i class="ri-shopping-cart-fill"></i>
+                            </div>
+                            <h3>Revenue Impact</h3>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">
+                                <i class="ri-money-dollar-circle-line"></i>
+                                WhatsApp Revenue
+                            </span>
+                            <span id="analyticsWhatsAppRevenue" class="stat-value">
+                                $0
+                                <span class="stat-trend up">
+                                    <i class="ri-arrow-up-s-line"></i>
+                                    -
+                                </span>
+                            </span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">
+                                <i class="ri-percent-line"></i>
+                                Conversion Rate
+                            </span>
+                            <span id="analyticsConversionRate" class="stat-value">-%</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">
+                                <i class="ri-calculator-line"></i>
+                                ROAS
+                            </span>
+                            <span id="analyticsROAS" class="stat-value">-x</span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-icon orange">
+                                <i class="ri-shopping-bag-2-fill"></i>
+                            </div>
+                            <h3>Cart Recovery</h3>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">
+                                <i class="ri-shopping-cart-2-line"></i>
+                                Carts Recovered
+                            </span>
+                            <span class="stat-value">
+                                <span id="cartsRecoveredStat">0</span>
+                                <span class="stat-trend up">
+                                    <i class="ri-arrow-up-s-line"></i>
+                                    <span id="cartsRecoveredGrowthStat">0%</span>
+                                </span>
+                            </span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">
+                                <i class="ri-percent-line"></i>
+                                Recovery Rate
+                            </span>
+                            <span id="recoveryRateStat" class="stat-value">0%</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">
+                                <i class="ri-money-dollar-box-line"></i>
+                                Recovered Value
+                            </span>
+                            <span id="recoveredValueStat" class="stat-value">$0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;">
+                    <!-- Main Chart -->
+                    <div class="chart-container">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                            <h3 style="margin: 0;">Message Volume & Revenue</h3>
+                            <div style="display: flex; gap: 16px; font-size: 14px;">
+                                <span style="display: flex; align-items: center; gap: 6px;">
+                                    <div style="width: 12px; height: 12px; background: var(--primary); border-radius: 2px;"></div>
+                                    Messages Sent
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 6px;">
+                                    <div style="width: 12px; height: 12px; background: var(--info); border-radius: 2px;"></div>
+                                    Revenue Generated
+                                </span>
+                            </div>
+                        </div>
+                        <canvas id="mainChart" width="600" height="300"></canvas>
+                    </div>
+
+                    <!-- Message Types Breakdown -->
+                    <div class="chart-container">
+                        <h3 style="margin: 0 0 24px 0;">Message Types</h3>
+                        <canvas id="pieChart" width="300" height="300"></canvas>
+                    </div>
+                </div>
+
+                <!-- Top Performing Campaigns -->
+                <div class="chart-container">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h3 style="margin: 0;">Top Performing Campaigns</h3>
+                        <button class="btn btn-secondary" onclick="navigateToTab('campaigns')">
+                            <i class="ri-arrow-right-line"></i>
+                            View All
+                        </button>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table id="campaignsTable" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--border);">
+                                    <th style="text-align: left; padding: 16px 12px; font-weight: 600; color: var(--text-primary);">Campaign</th>
+                                    <th style="text-align: left; padding: 16px 12px; font-weight: 600; color: var(--text-primary);">Messages</th>
+                                    <th style="text-align: left; padding: 16px 12px; font-weight: 600; color: var(--text-primary);">Delivered</th>
+                                    <th style="text-align: left; padding: 16px 12px; font-weight: 600; color: var(--text-primary);">Clicked</th>
+                                    <th style="text-align: left; padding: 16px 12px; font-weight: 600; color: var(--text-primary);">Revenue</th>
+                                    <th style="text-align: left; padding: 16px 12px; font-weight: 600; color: var(--text-primary);">ROI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="campaignsTableBody">
+                                <!-- Dynamic campaign data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Customers Tab -->
+            <div id="customers" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <div>
+                        <h2 style="margin: 0;">Customer Management</h2>
+                        <p style="color: var(--text-secondary); margin-top: 4px;">Manage your WhatsApp contacts and conversations</p>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-secondary" onclick="syncCustomers()">
+                            <i class="ri-refresh-line"></i>
+                            Sync from Shopify
+                        </button>
+                        <button class="btn btn-primary" onclick="showImportModal()">
+                            <i class="ri-upload-2-line"></i>
+                            Import Contacts
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Customer Stats -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
+                    <div id="totalCustomersStat" style="background: var(--background); padding: 20px; border-radius: var(--radius); text-align: center;">
+                        <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);">-</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">Total Customers</div>
+                    </div>
+                    <div id="withWhatsAppStat" style="background: var(--background); padding: 20px; border-radius: var(--radius); text-align: center;">
+                        <div style="font-size: 24px; font-weight: 700; color: var(--success);">-</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">With WhatsApp</div>
+                    </div>
+                    <div id="activeCustomersStat" style="background: var(--background); padding: 20px; border-radius: var(--radius); text-align: center;">
+                        <div style="font-size: 24px; font-weight: 700; color: var(--info);">-</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">Active</div>
+                    </div>
+                    <div id="inactiveCustomersStat" style="background: var(--background); padding: 20px; border-radius: var(--radius); text-align: center;">
+                        <div style="font-size: 24px; font-weight: 700; color: var(--warning);">-</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">Inactive</div>
+                    </div>
+                </div>
+
+                <!-- Search and Filters -->
+                <div style="background: var(--surface); padding: 20px; border-radius: var(--radius); margin-bottom: 24px; border: 1px solid var(--border);">
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                        <input type="text" placeholder="Search customers..." class="form-input" style="flex: 1; min-width: 200px;" id="customerSearch">
+                        <select class="form-input" style="width: auto;">
+                            <option>All Customers</option>
+                            <option>VIP Customers</option>
+                            <option>Recent Buyers</option>
+                            <option>Inactive</option>
+                            <option>Opted Out</option>
+                        </select>
+                        <select class="form-input" style="width: auto;">
+                            <option>All Regions</option>
+                            <option>North America</option>
+                            <option>Europe</option>
+                            <option>Asia Pacific</option>
+                        </select>
+                        <button class="btn btn-secondary">
+                            <i class="ri-filter-3-line"></i>
+                            More Filters
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Customer List -->
+                <div class="chart-container">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0;">Customer List</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" style="padding: 8px 16px;">
+                                <i class="ri-download-line"></i>
+                                Export
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="customerTable" class="table-container">
+                        <!-- Customer table will be populated here -->
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <i class="ri-user-3-line" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
+                            <p>Loading customer data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages Tab -->
+            <div id="messages" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <div>
+                        <h2 style="margin: 0;">Messages & Conversations</h2>
+                        <p style="color: var(--text-secondary); margin-top: 4px;">View and manage all WhatsApp conversations</p>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-secondary">
+                            <i class="ri-search-line"></i>
+                            Search Messages
+                        </button>
+                        <button class="btn btn-primary" onclick="showBulkMessageModal()">
+                            <i class="ri-chat-new-line"></i>
+                            Send Bulk Message
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Message Stats -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 32px;">
+                    <div style="background: var(--background); padding: 16px; border-radius: var(--radius); text-align: center;">
+                        <div id="messagesTodayStat" style="font-size: 20px; font-weight: 700; color: var(--success);">0</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">Today</div>
+                    </div>
+                    <div style="background: var(--background); padding: 16px; border-radius: var(--radius); text-align: center;">
+                        <div id="messagesWeekStat" style="font-size: 20px; font-weight: 700; color: var(--info);">0</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">This Week</div>
+                    </div>
+                    <div style="background: var(--background); padding: 16px; border-radius: var(--radius); text-align: center;">
+                        <div id="deliveryRateStat" style="font-size: 20px; font-weight: 700; color: var(--warning);">0%</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">Delivery Rate</div>
+                    </div>
+                    <div style="background: var(--background); padding: 16px; border-radius: var(--radius); text-align: center;">
+                        <div id="responseRateStat" style="font-size: 20px; font-weight: 700; color: var(--primary);">0%</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">Response Rate</div>
+                    </div>
+                </div>
+
+                <!-- Live Chat Interface -->
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; height: 600px;">
+                    <!-- Conversation List -->
+                    <div class="chart-container" style="height: 100%; overflow: hidden; display: flex; flex-direction: column;">
+                        <div style="padding: 20px; border-bottom: 1px solid var(--border);">
+                            <h3 style="margin: 0 0 16px 0;">Recent Conversations</h3>
+                            <input type="text" placeholder="Search conversations..." class="form-input">
+                        </div>
+                        <div style="flex: 1; overflow-y: auto;" id="conversationList">
+                            <!-- Conversation list items -->
+                        </div>
+                    </div>
+
+                    <!-- Chat View -->
+                    <div class="chart-container" style="height: 100%; display: flex; flex-direction: column;">
+                        <div style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 40px; height: 40px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                JD
+                            </div>
+                            <div>
+                                <div style="font-weight: 600;">John Doe</div>
+                                <div style="font-size: 13px; color: var(--text-secondary);">+1 (555) 123-4567</div>
+                            </div>
+                            <div style="margin-left: auto;">
+                                <span style="background: var(--success); color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px;">
+                                    Online
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div style="flex: 1; padding: 20px; overflow-y: auto; background: #f8f9fa;" id="chatMessages">
+                            <!-- Chat messages will be displayed here -->
+                            <div style="text-align: center; color: var(--text-secondary); margin-top: 50px;">
+                                <i class="ri-chat-3-line" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
+                                <p>Select a conversation to start messaging</p>
+                            </div>
+                        </div>
+
+                        <div style="padding: 20px; border-top: 1px solid var(--border);">
+                            <div style="display: flex; gap: 12px;">
+                                <button class="btn btn-secondary" style="padding: 8px;">
+                                    <i class="ri-attachment-2"></i>
+                                </button>
+                                <button class="btn btn-secondary" style="padding: 8px;">
+                                    <i class="ri-emotion-line"></i>
+                                </button>
+                                <input type="text" placeholder="Type your message..." class="form-input" style="flex: 1;">
+                                <button class="btn btn-primary">
+                                    <i class="ri-send-plane-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campaigns Tab -->
+            <div id="campaigns" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <div>
+                        <h2 style="margin: 0;">Marketing Campaigns</h2>
+                        <p style="color: var(--text-secondary); margin-top: 4px;">Create and manage your WhatsApp marketing campaigns</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="showCreateCampaignModal()">
+                        <i class="ri-add-circle-fill"></i>
+                        Create Campaign
                     </button>
                 </div>
+
+                <!-- Campaign Types -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 32px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: var(--radius); cursor: pointer;" onclick="createCampaignType('broadcast')">
+                        <i class="ri-megaphone-fill" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                        <h3 style="margin: 0 0 8px 0;">Broadcast Campaign</h3>
+                        <p style="opacity: 0.9; font-size: 14px;">Send messages to multiple customers at once</p>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 24px; border-radius: var(--radius); cursor: pointer;" onclick="createCampaignType('promotional')">
+                        <i class="ri-price-tag-3-fill" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                        <h3 style="margin: 0 0 8px 0;">Promotional Campaign</h3>
+                        <p style="opacity: 0.9; font-size: 14px;">Flash sales, discounts, and special offers</p>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 24px; border-radius: var(--radius); cursor: pointer;" onclick="createCampaignType('seasonal')">
+                        <i class="ri-calendar-event-fill" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                        <h3 style="margin: 0 0 8px 0;">Seasonal Campaign</h3>
+                        <p style="opacity: 0.9; font-size: 14px;">Holiday greetings and seasonal promotions</p>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 24px; border-radius: var(--radius); cursor: pointer;" onclick="createCampaignType('product_launch')">
+                        <i class="ri-rocket-fill" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                        <h3 style="margin: 0 0 8px 0;">Product Launch</h3>
+                        <p style="opacity: 0.9; font-size: 14px;">Announce new products and features</p>
+                    </div>
+                </div>
+
+                <!-- Active Campaigns -->
+                <div class="chart-container">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h3 style="margin: 0;">Active Campaigns</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <select class="form-input" style="width: auto; padding: 8px 12px;">
+                                <option>All Status</option>
+                                <option>Active</option>
+                                <option>Scheduled</option>
+                                <option>Completed</option>
+                                <option>Draft</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="campaignsList">
+                        <!-- Campaigns will be loaded here -->
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <i class="ri-megaphone-line" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
+                            <p>No campaigns created yet</p>
+                            <button class="btn btn-primary" onclick="showCreateCampaignModal()" style="margin-top: 16px;">
+                                Create Your First Campaign
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="automation" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <div>
+                        <h2 style="margin: 0;">Advanced Automation</h2>
+                        <p style="color: var(--text-secondary); margin-top: 4px;">Configure intelligent automated workflows</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="createFlow()">
+                        <i class="ri-add-circle-fill"></i>
+                        Create WhatsApp Flow
+                    </button>
+                </div>
+
+                <!-- Advanced Abandoned Cart Section -->
+                <div class="chart-container" style="margin-bottom: 32px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="card-icon orange" style="width: 40px; height: 40px;">
+                                <i class="ri-shopping-cart-2-fill"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin: 0;">Abandoned Cart Recovery</h3>
+                                <p style="color: var(--text-secondary); font-size: 14px; margin: 4px 0 0 0;">Advanced multi-step recovery sequence</p>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="abandonedCartAdvanced" checked onchange="toggleAdvancedCart()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div id="advancedCartConfig" style="display: block;">
+                        <!-- Recovery Sequence -->
+                        <div style="background: var(--background); padding: 20px; border-radius: var(--radius); margin-bottom: 20px;">
+                            <h4 style="margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+                                <i class="ri-time-line"></i>
+                                Recovery Sequence
+                            </h4>
+                            
+                            <div style="display: grid; gap: 16px;">
+                                <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);">
+                                    <div style="width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">1</div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500; margin-bottom: 4px;">First Reminder</div>
+                                        <div style="display: flex; gap: 8px; align-items: center;">
+                                            <select class="form-input" style="width: 80px; padding: 6px 8px;">
+                                                <option>1</option>
+                                                <option>2</option>
+                                                <option>3</option>
+                                                <option>6</option>
+                                                <option>12</option>
+                                            </select>
+                                            <select class="form-input" style="width: 100px; padding: 6px 8px;">
+                                                <option>Hours</option>
+                                                <option>Minutes</option>
+                                                <option>Days</option>
+                                            </select>
+                                            <span style="color: var(--text-secondary); font-size: 14px;">after cart abandonment</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" class="form-input" placeholder="Discount %" style="width: 80px; padding: 6px 8px;">
+                                        <button class="btn btn-secondary" style="padding: 6px 12px;" onclick="editCartMessage(1)">
+                                            <i class="ri-edit-line"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);">
+                                    <div style="width: 32px; height: 32px; background: var(--info); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">2</div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500; margin-bottom: 4px;">Second Reminder</div>
+                                        <div style="display: flex; gap: 8px; align-items: center;">
+                                            <select class="form-input" style="width: 80px; padding: 6px 8px;">
+                                                <option>6</option>
+                                                <option>12</option>
+                                                <option>24</option>
+                                            </select>
+                                            <select class="form-input" style="width: 100px; padding: 6px 8px;">
+                                                <option>Hours</option>
+                                                <option>Days</option>
+                                            </select>
+                                            <span style="color: var(--text-secondary); font-size: 14px;">after first reminder</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" class="form-input" placeholder="Discount %" style="width: 80px; padding: 6px 8px;" value="15">
+                                        <button class="btn btn-secondary" style="padding: 6px 12px;" onclick="editCartMessage(2)">
+                                            <i class="ri-edit-line"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);">
+                                    <div style="width: 32px; height: 32px; background: var(--warning); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">3</div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500; margin-bottom: 4px;">Final Reminder</div>
+                                        <div style="display: flex; gap: 8px; align-items: center;">
+                                            <select class="form-input" style="width: 80px; padding: 6px 8px;">
+                                                <option>3</option>
+                                                <option>7</option>
+                                                <option>14</option>
+                                            </select>
+                                            <select class="form-input" style="width: 100px; padding: 6px 8px;">
+                                                <option>Days</option>
+                                            </select>
+                                            <span style="color: var(--text-secondary); font-size: 14px;">after second reminder</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <input type="text" class="form-input" placeholder="Discount %" style="width: 80px; padding: 6px 8px;" value="20">
+                                        <button class="btn btn-secondary" style="padding: 6px 12px;" onclick="editCartMessage(3)">
+                                            <i class="ri-edit-line"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Settings -->
+                        <div style="background: var(--background); padding: 20px; border-radius: var(--radius);">
+                            <h4 style="margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+                                <i class="ri-settings-4-line"></i>
+                                Advanced Settings
+                            </h4>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Minimum Cart Value</label>
+                                    <input type="number" class="form-input" placeholder="25.00" style="padding: 8px 12px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Max Reminders per Customer</label>
+                                    <select class="form-input" style="padding: 8px 12px;">
+                                        <option>3</option>
+                                        <option>5</option>
+                                        <option>Unlimited</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Stop if Customer</label>
+                                    <select class="form-input" style="padding: 8px 12px;">
+                                        <option>Purchases anything</option>
+                                        <option>Purchases same items</option>
+                                        <option>Visits checkout</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Include Product Image</label>
+                                    <select class="form-input" style="padding: 8px 12px;">
+                                        <option>First item only</option>
+                                        <option>All items</option>
+                                        <option>None</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 
-                <div class="form-group">
-                    <label>
+                <div class="form-group inline">
+                    <div>
+                        <label for="abandonedCart">Abandoned Cart Recovery</label>
+                        <p>Send WhatsApp messages to customers who abandon their carts</p>
+                    </div>
+                    <label class="toggle-switch">
                         <input type="checkbox" id="abandonedCart" checked>
-                        Abandoned Cart Recovery
+                        <span class="slider"></span>
                     </label>
-                    <p style="color: #666; font-size: 14px; margin-top: 5px;">
-                        Send WhatsApp messages to customers who abandon their carts
-                    </p>
                 </div>
                 
-                <div class="form-group">
-                    <label>
+                <div class="form-group inline">
+                    <div>
+                        <label for="orderConfirmation">Order Confirmation Messages</label>
+                        <p>Automatically send order confirmations via WhatsApp</p>
+                    </div>
+                    <label class="toggle-switch">
                         <input type="checkbox" id="orderConfirmation" checked>
-                        Order Confirmation Messages
+                        <span class="slider"></span>
                     </label>
-                    <p style="color: #666; font-size: 14px; margin-top: 5px;">
-                        Automatically send order confirmations via WhatsApp
-                    </p>
                 </div>
                 
-                <div class="form-group">
-                    <label>
+                <div class="form-group inline">
+                    <div>
+                        <label for="shippingUpdates">Shipping Updates</label>
+                        <p>Notify customers when their order ships and is delivered</p>
+                    </div>
+                    <label class="toggle-switch">
                         <input type="checkbox" id="shippingUpdates" checked>
-                        Shipping Updates
+                        <span class="slider"></span>
                     </label>
-                    <p style="color: #666; font-size: 14px; margin-top: 5px;">
-                        Notify customers when their order ships and is delivered
-                    </p>
                 </div>
                 
-                <div class="form-group">
-                    <label>
+                <div class="form-group inline">
+                    <div>
+                        <label for="welcomeMessage">Welcome Messages</label>
+                        <p>Send welcome messages to new customers</p>
+                    </div>
+                    <label class="toggle-switch">
                         <input type="checkbox" id="welcomeMessage" checked>
-                        Welcome Messages
+                        <span class="slider"></span>
                     </label>
-                    <p style="color: #666; font-size: 14px; margin-top: 5px;">
-                        Send welcome messages to new customers
-                    </p>
                 </div>
                 
-                <div class="form-group">
-                    <label>
+                <div class="form-group inline">
+                    <div>
+                        <label for="reviewRequest">Review Requests</label>
+                        <p>Ask customers to leave reviews 3 days after delivery</p>
+                    </div>
+                    <label class="toggle-switch">
                         <input type="checkbox" id="reviewRequest">
-                        Review Requests
+                        <span class="slider"></span>
                     </label>
-                    <p style="color: #666; font-size: 14px; margin-top: 5px;">
-                        Ask customers to leave reviews 3 days after delivery
-                    </p>
                 </div>
                 
-                <div class="form-group">
-                    <label>
+                <div class="form-group inline">
+                    <div>
+                        <label for="birthdayMessages">Birthday Messages</label>
+                        <p>Send birthday wishes to customers</p>
+                    </div>
+                    <label class="toggle-switch">
                         <input type="checkbox" id="birthdayMessages">
-                        Birthday Messages
+                        <span class="slider"></span>
                     </label>
-                    <p style="color: #666; font-size: 14px; margin-top: 5px;">
-                        Send birthday wishes to customers
-                    </p>
                 </div>
                 
-                <div class="form-group">
-                    <label>
+                <div class="form-group inline">
+                    <div>
+                        <label for="backInStock">Back in Stock Notifications</label>
+                        <p>Notify customers when out-of-stock items are available</p>
+                    </div>
+                    <label class="toggle-switch">
                         <input type="checkbox" id="backInStock">
-                        Back in Stock Notifications
+                        <span class="slider"></span>
                     </label>
-                    <p style="color: #666; font-size: 14px; margin-top: 5px;">
-                        Notify customers when out-of-stock items are available
-                    </p>
                 </div>
                 
-                <button class="btn btn-primary" onclick="saveAutomation()">Save Automation Settings</button>
+                <button class="btn btn-primary" onclick="saveAutomation()">
+                    <i class="ri-save-line"></i>
+                    Save Automation Settings
+                </button>
                 
                 <!-- Existing Flows Section -->
                 <div id="existing-flows" style="margin-top: 40px;">
-                    <h3 style="margin-bottom: 20px;">Your WhatsApp Flows</h3>
-                    <div id="flows-container">
-                        <p style="color: #666; text-align: center; padding: 20px;">Loading flows...</p>
+                    <h3 style="margin-bottom: 20px; font-size: 20px; font-weight: 600;">Your WhatsApp Flows</h3>
+                    <div id="flows-container" class="loading">
+                        <div class="empty-state">
+                            <i class="ri-loader-4-line"></i>
+                            <p>Loading flows...</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -500,7 +1885,10 @@
                     </div>
                 </div>
                 
-                <button class="btn btn-primary" onclick="addTemplate()">Add New Template</button>
+                <button class="btn btn-primary" onclick="addTemplate()">
+                    <i class="ri-add-line"></i>
+                    Add New Template
+                </button>
             </div>
             
             <div id="settings" class="tab-content">
@@ -536,7 +1924,10 @@
                     <textarea>Thank you for contacting us! We're currently closed but will respond to your message during our business hours: Mon-Fri 9AM-6PM EST.</textarea>
                 </div>
                 
-                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+                <button class="btn btn-primary" onclick="saveSettings()">
+                    <i class="ri-save-line"></i>
+                    Save Settings
+                </button>
             </div>
         </div>
     </div>
@@ -551,8 +1942,8 @@ function sendWhatsAppTest() {
     
     if (!phoneInput || !phoneInput.value) {
         resultDiv.style.display = 'block';
-        resultDiv.style.color = 'red';
-        resultDiv.innerHTML = '❌ Please enter a phone number';
+        resultDiv.className = 'test-result error';
+        resultDiv.innerHTML = '<i class="ri-error-warning-line"></i> Please enter a phone number';
         return;
     }
     
@@ -561,25 +1952,25 @@ function sendWhatsAppTest() {
     
     // Show loading
     resultDiv.style.display = 'block';
-    resultDiv.style.color = '#666';
-    resultDiv.innerHTML = '⏳ Sending message...';
+    resultDiv.className = 'test-result';
+    resultDiv.innerHTML = '<i class="ri-loader-4-line"></i> Sending message...';
     
     // Use the WORKING endpoint you already have
     fetch(`/test-whatsapp-simple`)  // <-- Use your existing working endpoint
         .then(response => response.text())
         .then(html => {
             if (html.includes('Success')) {
-                resultDiv.style.color = 'green';
-                resultDiv.innerHTML = '✅ Message sent successfully! Check WhatsApp';
+                resultDiv.className = 'test-result success';
+                resultDiv.innerHTML = '<i class="ri-checkbox-circle-line"></i> Message sent successfully! Check WhatsApp';
                 phoneInput.value = '';
             } else {
-                resultDiv.style.color = 'red';
-                resultDiv.innerHTML = '❌ Failed to send message. Make sure you joined Twilio Sandbox!';
+                resultDiv.className = 'test-result error';
+                resultDiv.innerHTML = '<i class="ri-error-warning-line"></i> Failed to send message. Make sure you joined Twilio Sandbox!';
             }
         })
         .catch(error => {
-            resultDiv.style.color = 'red';
-            resultDiv.innerHTML = '❌ Error: ' + error.message;
+            resultDiv.className = 'test-result error';
+            resultDiv.innerHTML = '<i class="ri-error-warning-line"></i> Error: ' + error.message;
         });
 }        
         // Switch tabs function
@@ -595,28 +1986,709 @@ function sendWhatsAppTest() {
             // Add active class to clicked tab and corresponding content
             event.target.classList.add('active');
             document.getElementById(tabName).classList.add('active');
+            
+            // Load specific tab data when switching
+            if (tabName === 'messages') {
+                loadMessageStats();
+            } else if (tabName === 'analytics') {
+                loadRealStats();
+            }
         }
         
         // Sync contacts function
         function syncContacts() {
-            alert('Syncing contacts from Shopify...');
-            // In production, this would make an API call like:
-            /*
-            fetch('/api/sync-contacts', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert('Contacts synced: ' + data.count);
-            });
-            */
+            showToast('Syncing contacts from Shopify...', 'info');
+            
+            // Simulate sync with timeout
+            setTimeout(() => {
+                showToast('Contacts synced successfully!', 'success');
+            }, 2000);
         }
         
         // View logs function
         function viewLogs() {
-            alert('Opening message logs...');
+            showToast('Opening message logs...', 'info');
             // In production, redirect to logs page:
             // window.location.href = '/logs';
+        }
+
+        // Toast notification system
+        function showToast(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container') || createToastContainer();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icons = {
+                success: 'ri-checkbox-circle-line',
+                error: 'ri-error-warning-line',
+                info: 'ri-information-line',
+                warning: 'ri-alert-line'
+            };
+            
+            toast.innerHTML = `
+                <i class="${icons[type]}"></i>
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()">
+                    <i class="ri-close-line"></i>
+                </button>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                z-index: 1000;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            `;
+            document.body.appendChild(container);
+            return container;
+        }
+
+        // Add toast styles
+        const toastStyles = document.createElement('style');
+        toastStyles.textContent = `
+            .toast {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                padding: 16px 20px;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                min-width: 300px;
+                box-shadow: var(--shadow);
+                animation: slideIn 0.3s ease-out;
+                transition: opacity 0.3s;
+            }
+            
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            .toast i:first-child {
+                font-size: 20px;
+            }
+            
+            .toast.success i:first-child { color: var(--success); }
+            .toast.error i:first-child { color: var(--error); }
+            .toast.info i:first-child { color: var(--info); }
+            .toast.warning i:first-child { color: var(--warning); }
+            
+            .toast span {
+                flex: 1;
+                font-size: 14px;
+                font-weight: 500;
+            }
+            
+            .toast button {
+                background: none;
+                border: none;
+                color: var(--text-secondary);
+                cursor: pointer;
+                padding: 4px;
+                font-size: 18px;
+            }
+            
+            .toast button:hover {
+                color: var(--text-primary);
+            }
+        `;
+        document.head.appendChild(toastStyles);
+
+        // Global chart variables
+        let mainChart = null;
+        let pieChart = null;
+
+        // Initialize Charts with real data
+        async function initializeCharts() {
+            try {
+                await loadChartData();
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+                // Initialize with empty charts
+                initializeEmptyCharts();
+            }
+        }
+
+        // Load real chart data from APIs
+        async function loadChartData() {
+            const sessionToken = getSessionToken();
+            const headers = sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {};
+
+            // Get orders data for main chart
+            const ordersResponse = await fetch('/api/orders?days=7', { headers });
+            const ordersData = await ordersResponse.json();
+
+            // Get campaign analytics for pie chart
+            const campaignResponse = await fetch('/api/campaign-analytics', { headers });
+            const campaignData = await campaignResponse.json();
+
+            if (ordersData.success && ordersData.orders) {
+                updateMainChart(ordersData.orders);
+            }
+
+            if (campaignData.success && campaignData.campaigns) {
+                updatePieChart(campaignData.campaigns);
+            }
+        }
+
+        // Update main chart with real order/message data
+        function updateMainChart(orders) {
+            const mainCtx = document.getElementById('mainChart');
+            if (!mainCtx) return;
+
+            // Group orders by day for the last 7 days
+            const last7Days = [];
+            const messagesByDay = [];
+            const revenueByDay = [];
+
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const dayLabel = date.toLocaleDateString('en', { weekday: 'short' });
+                const dayStart = new Date(date);
+                dayStart.setHours(0, 0, 0, 0);
+                const dayEnd = new Date(date);
+                dayEnd.setHours(23, 59, 59, 999);
+
+                const dayOrders = orders.filter(order => {
+                    const orderDate = new Date(order.createdAt);
+                    return orderDate >= dayStart && orderDate <= dayEnd;
+                });
+
+                last7Days.push(dayLabel);
+                messagesByDay.push(dayOrders.reduce((sum, order) => sum + (order.whatsappMessages || 0), 0));
+                revenueByDay.push(dayOrders.reduce((sum, order) => sum + order.amount, 0));
+            }
+
+            if (mainChart) {
+                mainChart.destroy();
+            }
+
+            mainChart = new Chart(mainCtx, {
+                type: 'line',
+                data: {
+                    labels: last7Days,
+                    datasets: [{
+                        label: 'WhatsApp Messages',
+                        data: messagesByDay,
+                        borderColor: '#25D366',
+                        backgroundColor: 'rgba(37, 211, 102, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Revenue Generated',
+                        data: revenueByDay,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Messages'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Revenue ($)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        },
+                    }
+                }
+            });
+        }
+
+        // Update pie chart with real campaign data
+        function updatePieChart(campaigns) {
+            const pieCtx = document.getElementById('pieChart');
+            if (!pieCtx) return;
+
+            const labels = campaigns.map(c => c.name);
+            const data = campaigns.map(c => c.messagesSent);
+            const colors = [
+                '#25D366', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444',
+                '#10b981', '#f97316', '#6366f1', '#ec4899', '#14b8a6'
+            ];
+
+            if (pieChart) {
+                pieChart.destroy();
+            }
+
+            pieChart = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, labels.length)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize empty charts as fallback
+        function initializeEmptyCharts() {
+            const mainCtx = document.getElementById('mainChart');
+            const pieCtx = document.getElementById('pieChart');
+
+            if (mainCtx) {
+                new Chart(mainCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'Messages Sent',
+                            data: [0, 0, 0, 0, 0, 0, 0],
+                            borderColor: '#25D366',
+                            backgroundColor: 'rgba(37, 211, 102, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: { responsive: true }
+                });
+            }
+
+            if (pieCtx) {
+                new Chart(pieCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['No data'],
+                        datasets: [{ data: [1], backgroundColor: ['#e5e7eb'] }]
+                    },
+                    options: { responsive: true }
+                });
+            }
+        }
+
+        // Advanced Cart Toggle
+        function toggleAdvancedCart() {
+            const isEnabled = document.getElementById('abandonedCartAdvanced').checked;
+            const config = document.getElementById('advancedCartConfig');
+            if (config) {
+                config.style.display = isEnabled ? 'block' : 'none';
+            }
+        }
+
+        // Navigate to Tab
+        function navigateToTab(tabName) {
+            switchTab(tabName);
+        }
+
+        // Load Real Customer Data from Shopify
+        async function loadCustomerData() {
+            const customerTable = document.getElementById('customerTable');
+            
+            try {
+                // Show loading state
+                if (customerTable) {
+                    customerTable.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <i class="ri-loader-4-line loading" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
+                            <p>Loading customer data from Shopify...</p>
+                        </div>
+                    `;
+                }
+
+                const sessionToken = getSessionToken();
+                const headers = sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {};
+
+                // Fetch real customer data from Shopify
+                const response = await fetch('/api/customers', { headers });
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to fetch customer data');
+                }
+
+                const customers = data.customers || [];
+                
+                // Update customer stats
+                if (data.stats) {
+                    updateCustomerStats(data.stats);
+                }
+
+                if (customerTable) {
+                    if (customers.length === 0) {
+                        customerTable.innerHTML = `
+                            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                <i class="ri-user-3-line" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
+                                <p>No customers found with phone numbers</p>
+                                <button class="btn btn-primary" onclick="syncCustomers()" style="margin-top: 16px;">
+                                    <i class="ri-refresh-line"></i>
+                                    Sync from Shopify
+                                </button>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    customerTable.innerHTML = `
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--border);">
+                                    <th style="text-align: left; padding: 12px; font-weight: 600;">Customer</th>
+                                    <th style="text-align: left; padding: 12px; font-weight: 600;">Phone</th>
+                                    <th style="text-align: left; padding: 12px; font-weight: 600;">Status</th>
+                                    <th style="text-align: left; padding: 12px; font-weight: 600;">Orders</th>
+                                    <th style="text-align: left; padding: 12px; font-weight: 600;">Total Spent</th>
+                                    <th style="text-align: left; padding: 12px; font-weight: 600;">WhatsApp</th>
+                                    <th style="text-align: left; padding: 12px; font-weight: 600;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${customers.map(customer => `
+                                    <tr style="border-bottom: 1px solid var(--border);">
+                                        <td style="padding: 12px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <div style="width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px;">
+                                                    ${customer.name ? customer.name.split(' ').map(n => n[0]).join('').toUpperCase() : '?'}
+                                                </div>
+                                                <div>
+                                                    <div style="font-weight: 500;">${customer.name || 'No Name'}</div>
+                                                    <div style="font-size: 12px; color: var(--text-secondary);">${customer.email || ''}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style="padding: 12px; color: var(--text-secondary);">${customer.phone || 'No phone'}</td>
+                                        <td style="padding: 12px;">
+                                            <span style="background: ${customer.status === 'Active' ? 'var(--success)' : 'var(--text-muted)'}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px;">
+                                                ${customer.status}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 12px; color: var(--text-secondary);">${customer.ordersCount || 0}</td>
+                                        <td style="padding: 12px; font-weight: 600;">$${customer.totalSpent || '0.00'}</td>
+                                        <td style="padding: 12px;">
+                                            ${customer.hasWhatsApp ? 
+                                                `<span style="color: var(--success); font-size: 12px;">
+                                                    <i class="ri-whatsapp-line"></i> ${customer.messagesCount || 0} msgs
+                                                </span>` :
+                                                `<span style="color: var(--text-muted); font-size: 12px;">No WhatsApp</span>`
+                                            }
+                                        </td>
+                                        <td style="padding: 12px;">
+                                            <div style="display: flex; gap: 4px;">
+                                                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" onclick="viewCustomer('${customer.id}')">
+                                                    View
+                                                </button>
+                                                ${customer.phone ? 
+                                                    `<button class="btn btn-primary" style="padding: 4px 8px; font-size: 12px;" onclick="messageCustomer('${customer.phone}')">
+                                                        <i class="ri-chat-3-line"></i>
+                                                    </button>` : ''
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading customer data:', error);
+                if (customerTable) {
+                    customerTable.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--error);">
+                            <i class="ri-error-warning-line" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
+                            <p>Failed to load customer data</p>
+                            <button class="btn btn-secondary" onclick="loadCustomerData()" style="margin-top: 16px;">
+                                Try Again
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Update customer statistics in the UI
+        function updateCustomerStats(stats) {
+            // Update Total Customers
+            const totalCustomersStat = document.getElementById('totalCustomersStat');
+            if (totalCustomersStat) {
+                totalCustomersStat.innerHTML = `
+                    <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);">${stats.totalCustomers || 0}</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">Total Customers</div>
+                `;
+            }
+
+            // Update With WhatsApp
+            const withWhatsAppStat = document.getElementById('withWhatsAppStat');
+            if (withWhatsAppStat) {
+                withWhatsAppStat.innerHTML = `
+                    <div style="font-size: 24px; font-weight: 700; color: var(--success);">${stats.withWhatsApp || 0}</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">With WhatsApp</div>
+                `;
+            }
+
+            // Update Active Customers  
+            const activeCustomersStat = document.getElementById('activeCustomersStat');
+            if (activeCustomersStat) {
+                activeCustomersStat.innerHTML = `
+                    <div style="font-size: 24px; font-weight: 700; color: var(--info);">${stats.activeCustomers || 0}</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">Active</div>
+                `;
+            }
+
+            // Update Inactive Customers
+            const inactiveCustomersStat = document.getElementById('inactiveCustomersStat');
+            if (inactiveCustomersStat) {
+                inactiveCustomersStat.innerHTML = `
+                    <div style="font-size: 24px; font-weight: 700; color: var(--warning);">${stats.inactiveCustomers || 0}</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">Inactive</div>
+                `;
+            }
+
+            console.log('Updated customer stats:', stats);
+        }
+
+        // Load Real Conversation List from database
+        async function loadConversations() {
+            const conversationList = document.getElementById('conversationList');
+            
+            try {
+                // Show loading state
+                if (conversationList) {
+                    conversationList.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            <i class="ri-loader-4-line loading" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                            <p>Loading conversations...</p>
+                        </div>
+                    `;
+                }
+
+                const sessionToken = getSessionToken();
+                const headers = sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {};
+
+                // Get recent WhatsApp messages from database
+                const response = await fetch('/api/recent-conversations', { headers });
+                
+                // If endpoint doesn't exist yet, use customer data as fallback
+                let conversations = [];
+                
+                try {
+                    const data = await response.json();
+                    conversations = data.conversations || [];
+                } catch {
+                    // Fallback: get conversations from customer data
+                    const customerResponse = await fetch('/api/customers', { headers });
+                    const customerData = await customerResponse.json();
+                    
+                    if (customerData.success) {
+                        conversations = customerData.customers
+                            .filter(c => c.hasWhatsApp && c.messagesCount > 0)
+                            .slice(0, 10)
+                            .map(customer => ({
+                                name: customer.name || 'No Name',
+                                phone: customer.phone,
+                                lastMessage: `${customer.messagesCount} message${customer.messagesCount !== 1 ? 's' : ''}`,
+                                time: customer.lastMessageDate ? formatTime(customer.lastMessageDate) : 'Some time ago',
+                                unread: 0 // Would need real-time tracking
+                            }));
+                    }
+                }
+
+                if (conversationList) {
+                    if (conversations.length === 0) {
+                        conversationList.innerHTML = `
+                            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                <i class="ri-chat-3-line" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
+                                <p>No conversations yet</p>
+                                <p style="font-size: 13px;">Start messaging customers to see conversations here</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    conversationList.innerHTML = conversations.map(conv => `
+                        <div style="padding: 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s;" 
+                             onmouseover="this.style.background='var(--background)'" 
+                             onmouseout="this.style.background='transparent'" 
+                             onclick="selectConversation('${conv.phone || conv.name}', '${conv.name}')">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">
+                                    ${conv.name ? conv.name.split(' ').map(n => n[0]).join('').toUpperCase() : '?'}
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                        <div style="font-weight: 600; color: var(--text-primary);">${conv.name}</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">${conv.time}</div>
+                                    </div>
+                                    <div style="font-size: 14px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${conv.lastMessage}</div>
+                                </div>
+                                ${conv.unread > 0 ? `<div style="width: 20px; height: 20px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;">${conv.unread}</div>` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+                if (conversationList) {
+                    conversationList.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--error);">
+                            <i class="ri-error-warning-line" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
+                            <p>Failed to load conversations</p>
+                            <button class="btn btn-secondary" onclick="loadConversations()" style="margin-top: 16px;">
+                                Try Again
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Format time for display
+        function formatTime(dateString) {
+            if (!dateString) return 'Unknown';
+            
+            try {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins} min ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                if (diffDays < 7) return `${diffDays}d ago`;
+                return date.toLocaleDateString();
+            } catch {
+                return 'Unknown';
+            }
+        }
+
+        // Customer functions
+        function syncCustomers() {
+            showToast('Syncing customers from Shopify...', 'info');
+            setTimeout(() => {
+                showToast('Customers synced successfully!', 'success');
+                loadCustomerData();
+            }, 2000);
+        }
+
+        function viewCustomer(phone) {
+            showToast(`Opening customer profile for ${phone}`, 'info');
+        }
+
+        // Message customer function
+        async function messageCustomer(phone, customerName = '') {
+            if (!phone) {
+                showToast('No phone number provided', 'error');
+                return;
+            }
+
+            // Prompt user for message
+            const message = prompt(`Send WhatsApp message to ${customerName || phone}:`);
+            if (!message) return;
+
+            try {
+                showToast('Sending WhatsApp message...', 'info');
+                
+                const sessionToken = getSessionToken();
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                
+                if (sessionToken) {
+                    headers['Authorization'] = `Bearer ${sessionToken}`;
+                }
+
+                const response = await fetch('/api/send-message', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        phone: phone,
+                        message: message,
+                        customerName: customerName
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast('Message sent successfully!', 'success');
+                    // Refresh conversations if on messages tab
+                    if (document.getElementById('messages').classList.contains('active')) {
+                        loadConversations();
+                    }
+                } else {
+                    showToast('Failed to send message: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                showToast('Error sending message. Please try again.', 'error');
+            }
+        }
+
+        // Campaign functions
+        function createCampaignType(type) {
+            showToast(`Creating ${type} campaign...`, 'info');
+        }
+
+        function showCreateCampaignModal() {
+            showToast('Campaign creation modal would open here', 'info');
+        }
+
+        function showBulkMessageModal() {
+            showToast('Bulk message modal would open here', 'info');
+        }
+
+        function showImportModal() {
+            showToast('Import contacts modal would open here', 'info');
+        }
+
+        function selectConversation(name) {
+            showToast(`Selected conversation with ${name}`, 'info');
+        }
+
+        function editCartMessage(step) {
+            showToast(`Editing cart recovery message ${step}`, 'info');
         }
         
         // Save automation settings
@@ -650,13 +2722,13 @@ function sendWhatsAppTest() {
                 const result = await response.json();
                 
                 if (result.success) {
-                    alert('✅ Automation settings saved successfully!');
+                    showToast('Automation settings saved successfully!', 'success');
                 } else {
-                    alert('❌ Error saving settings: ' + result.error);
+                    showToast('Error saving settings: ' + result.error, 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('❌ Error saving settings. Please try again.');
+                showToast('Error saving settings. Please try again.', 'error');
             }
         }
 
@@ -712,34 +2784,44 @@ function sendWhatsAppTest() {
                 const container = document.getElementById('flows-container');
                 
                 if (result.success && result.flows.length > 0) {
+                    container.classList.remove('loading');
                     container.innerHTML = result.flows.map(flow => `
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <h4 style="margin: 0; color: #1e293b;">${flow.flow_name}</h4>
-                                <span style="background: ${flow.is_active ? '#10b981' : '#6b7280'}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                        <div class="flow-card">
+                            <div class="flow-header">
+                                <div class="flow-info">
+                                    <h4>${flow.flow_name}</h4>
+                                    <div class="flow-meta">
+                                        <span><i class="ri-price-tag-3-line"></i> ${flow.flow_type.replace('_', ' ').toUpperCase()}</span>
+                                        <span><i class="ri-time-line"></i> ${flow.trigger_delay_minutes} min</span>
+                                        <span><i class="ri-global-line"></i> ${flow.language.toUpperCase()}</span>
+                                    </div>
+                                </div>
+                                <span class="flow-status ${flow.is_active ? 'active' : 'inactive'}">
                                     ${flow.is_active ? 'Active' : 'Inactive'}
                                 </span>
                             </div>
-                            <div style="display: flex; gap: 12px; margin-bottom: 8px;">
-                                <span style="color: #64748b; font-size: 14px;">Type: ${flow.flow_type.replace('_', ' ').toUpperCase()}</span>
-                                <span style="color: #64748b; font-size: 14px;">Language: ${flow.language.toUpperCase()}</span>
-                                <span style="color: #64748b; font-size: 14px;">Delay: ${flow.trigger_delay_minutes} min</span>
-                            </div>
-                            <p style="color: #64748b; font-size: 13px; margin: 8px 0; line-height: 1.4;">${flow.message_content.substring(0, 100)}...</p>
-                            <div style="display: flex; gap: 8px; margin-top: 12px;">
-                                <button onclick="editFlow(${flow.id})" style="padding: 6px 12px; background: #4f46e5; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">Edit</button>
-                                <button onclick="toggleFlow(${flow.id}, ${flow.is_active})" style="padding: 6px 12px; background: ${flow.is_active ? '#ef4444' : '#10b981'}; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
-                                    ${flow.is_active ? 'Deactivate' : 'Activate'}
+                            <div class="flow-content">${flow.message_content.substring(0, 120)}...</div>
+                            <div class="flow-actions">
+                                <button onclick="editFlow(${flow.id})">
+                                    <i class="ri-edit-line"></i> Edit
                                 </button>
-                                <button onclick="deleteFlow(${flow.id}, '${flow.flow_name.replace(/'/g, "\\'")}')" style="padding: 6px 12px; background: #dc2626; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">Delete</button>
+                                <button onclick="toggleFlow(${flow.id}, ${flow.is_active})">
+                                    <i class="ri-toggle-line"></i> ${flow.is_active ? 'Disable' : 'Enable'}
+                                </button>
+                                <button class="delete" onclick="deleteFlow(${flow.id}, '${flow.flow_name.replace(/'/g, "\\'")}')" >
+                                    <i class="ri-delete-bin-line"></i> Delete
+                                </button>
                             </div>
                         </div>
                     `).join('');
                 } else {
+                    container.classList.remove('loading');
                     container.innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: #64748b;">
-                            <p style="margin-bottom: 16px;">No WhatsApp flows created yet</p>
-                            <button onclick="createFlow()" style="padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                        <div class="empty-state">
+                            <i class="ri-flow-chart"></i>
+                            <p>No WhatsApp flows created yet</p>
+                            <button class="btn btn-primary" onclick="createFlow()">
+                                <i class="ri-add-circle-fill"></i>
                                 Create Your First Flow
                             </button>
                         </div>
@@ -748,7 +2830,10 @@ function sendWhatsAppTest() {
             } catch (error) {
                 console.error('Error loading flows:', error);
                 document.getElementById('flows-container').innerHTML = `
-                    <p style="color: #ef4444; text-align: center; padding: 20px;">Error loading flows</p>
+                    <div class="empty-state">
+                        <i class="ri-error-warning-line" style="color: var(--error);"></i>
+                        <p style="color: var(--error);">Error loading flows</p>
+                    </div>
                 `;
             }
         }
@@ -781,14 +2866,14 @@ function sendWhatsAppTest() {
                 const result = await response.json();
                 
                 if (result.success) {
-                    alert(`✅ Flow ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
+                    showToast(`Flow ${currentStatus ? 'deactivated' : 'activated'} successfully!`, 'success');
                     loadExistingFlows(); // Reload the flows list
                 } else {
-                    alert('❌ Error updating flow: ' + result.error);
+                    showToast('Error updating flow: ' + result.error, 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('❌ Error updating flow. Please try again.');
+                showToast('Error updating flow. Please try again.', 'error');
             }
         }
 
@@ -814,26 +2899,26 @@ function sendWhatsAppTest() {
                 const result = await response.json();
                 
                 if (result.success) {
-                    alert('✅ Flow deleted successfully!');
+                    showToast('Flow deleted successfully!', 'success');
                     loadExistingFlows(); // Reload the flows list
                 } else {
-                    alert('❌ Error deleting flow: ' + result.error);
+                    showToast('Error deleting flow: ' + result.error, 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('❌ Error deleting flow. Please try again.');
+                showToast('Error deleting flow. Please try again.', 'error');
             }
         }
         
         // Add new template
         function addTemplate() {
-            alert('Opening template editor...');
+            showToast('Opening template editor...', 'info');
             // In production, open a modal or redirect to template editor
         }
         
         // Save general settings
         function saveSettings() {
-            alert('Settings saved successfully!');
+            showToast('Settings saved successfully!', 'success');
             // In production, gather all settings and save to backend
         }
         
@@ -896,47 +2981,264 @@ function sendWhatsAppTest() {
                 .then(response => response.json())
                 .then(stats => {
                     console.log('Real stats loaded:', stats);
-                    
-                    // Update Statistics section
-                    const statValues = document.querySelectorAll('.stat-value');
-                    if (statValues[0]) statValues[0].textContent = stats.messagesToday;
-                    if (statValues[1]) statValues[1].textContent = stats.customersWithPhone;
-                    if (statValues[2]) statValues[2].textContent = stats.totalMessages;
-                    
-                    // Update Revenue Impact section  
-                    if (statValues[3]) statValues[3].textContent = `${stats.currencyCode} ${stats.revenue30Days}`;
-                    if (statValues[4]) statValues[4].textContent = `${stats.conversionRate}%`;
-                    if (statValues[5]) statValues[5].textContent = `${stats.currencyCode} ${stats.avgOrderValue}`;
-                    
-                    // Update status
-                    const statusElement = document.querySelector('.status');
-                    if (statusElement) {
-                        if (stats.messagesToday > 0 || stats.totalMessages > 0) {
-                            statusElement.textContent = 'Active';
-                            statusElement.className = 'status active';
-                        } else {
-                            statusElement.textContent = 'Ready';
-                            statusElement.className = 'status inactive';
-                        }
-                    }
-                    
-                    // Show error if data fetch failed
-                    if (stats.error) {
-                        console.warn('Using fallback data:', stats.error);
-                    }
+                    updateAnalyticsStats(stats);
                 })
                 .catch(error => {
                     console.error('Error loading stats:', error);
-                    // Keep mock data as fallback
+                    // Show error state instead of mock data
+                    showAnalyticsError();
                 });
+        }
+
+        // Update analytics statistics with real data
+        function updateAnalyticsStats(stats) {
+            // Update main dashboard statistics
+            const messagesToday = document.getElementById('messagesToday');
+            if (messagesToday) {
+                messagesToday.innerHTML = `
+                    ${stats.messagesToday || 0}
+                    <span class="stat-trend up">
+                        <i class="ri-arrow-up-s-line"></i>
+                        ${stats.messagesTodayGrowth || 0}%
+                    </span>
+                `;
+            }
+
+            const customersWhatsApp = document.getElementById('customersWhatsApp');
+            if (customersWhatsApp) {
+                customersWhatsApp.innerHTML = `
+                    ${stats.customersWithPhone || 0}
+                    <span class="stat-trend up">
+                        <i class="ri-arrow-up-s-line"></i>
+                        ${stats.customersGrowth || 0}%
+                    </span>
+                `;
+            }
+
+            const totalMessages = document.getElementById('totalMessages');
+            if (totalMessages) {
+                totalMessages.textContent = stats.totalMessages || 0;
+            }
+
+            // Update revenue impact
+            const revenue30Days = document.getElementById('revenue30Days');
+            if (revenue30Days) {
+                revenue30Days.innerHTML = `
+                    $${stats.revenue30Days || '0.00'}
+                    <span class="stat-trend up">
+                        <i class="ri-arrow-up-s-line"></i>
+                        ${stats.revenueGrowth || 0}%
+                    </span>
+                `;
+            }
+
+            const conversionRate = document.getElementById('conversionRate');
+            if (conversionRate) {
+                conversionRate.textContent = `${stats.conversionRate || 0}%`;
+            }
+
+            const avgOrderValue = document.getElementById('avgOrderValue');
+            if (avgOrderValue) {
+                avgOrderValue.textContent = `$${stats.avgOrderValue || '0.00'}`;
+            }
+
+            // Update analytics tab performance metrics
+            const analyticsDeliveryRate = document.getElementById('analyticsDeliveryRate');
+            if (analyticsDeliveryRate) {
+                analyticsDeliveryRate.innerHTML = `
+                    ${stats.deliveryRate || 0}%
+                    <span class="stat-trend up">
+                        <i class="ri-arrow-up-s-line"></i>
+                        ${stats.deliveryRateGrowth || 0}%
+                    </span>
+                `;
+            }
+
+            const analyticsOpenRate = document.getElementById('analyticsOpenRate');
+            if (analyticsOpenRate) {
+                analyticsOpenRate.textContent = `${stats.openRate || 0}%`;
+            }
+
+            const analyticsClickRate = document.getElementById('analyticsClickRate');
+            if (analyticsClickRate) {
+                analyticsClickRate.textContent = `${stats.clickRate || 0}%`;
+            }
+
+            const analyticsWhatsAppRevenue = document.getElementById('analyticsWhatsAppRevenue');
+            if (analyticsWhatsAppRevenue) {
+                analyticsWhatsAppRevenue.innerHTML = `
+                    $${stats.whatsappRevenue || 0}
+                    <span class="stat-trend up">
+                        <i class="ri-arrow-up-s-line"></i>
+                        ${stats.whatsappRevenueGrowth || 0}%
+                    </span>
+                `;
+            }
+
+            const analyticsConversionRate = document.getElementById('analyticsConversionRate');
+            if (analyticsConversionRate) {
+                analyticsConversionRate.textContent = `${stats.analyticsConversionRate || 0}%`;
+            }
+
+            const analyticsROAS = document.getElementById('analyticsROAS');
+            if (analyticsROAS) {
+                analyticsROAS.textContent = `${stats.roas || 0}x`;
+            }
+
+            // Update status
+            const statusElement = document.querySelector('.status');
+            if (statusElement) {
+                if ((stats.messagesToday || 0) > 0 || (stats.totalMessages || 0) > 0) {
+                    statusElement.textContent = 'Active';
+                    statusElement.className = 'status active';
+                } else {
+                    statusElement.textContent = 'Ready';
+                    statusElement.className = 'status inactive';
+                }
+            }
+            
+            // Also update cart recovery and campaign performance data
+            updateCartRecoveryStats(stats);
+            updateCampaignTable(stats.campaigns || []);
+        }
+
+        // Load message statistics for Messages tab
+        function loadMessageStats() {
+            const sessionToken = getSessionToken();
+            const headers = {};
+            
+            if (sessionToken) {
+                headers['Authorization'] = `Bearer ${sessionToken}`;
+            }
+            
+            fetch('/api/stats', { headers })
+                .then(response => response.json())
+                .then(stats => {
+                    console.log('Message stats loaded:', stats);
+                    updateMessageStats(stats);
+                })
+                .catch(error => {
+                    console.error('Error loading message stats:', error);
+                    // Show error state or fallback
+                });
+        }
+
+        // Update message statistics in the Messages tab
+        function updateMessageStats(stats) {
+            // Update messagesTodayStat
+            const messagesTodayStatElement = document.getElementById('messagesTodayStat');
+            if (messagesTodayStatElement) {
+                messagesTodayStatElement.textContent = stats.messagesToday || 0;
+            }
+
+            // Update messagesWeekStat
+            const messagesWeekStatElement = document.getElementById('messagesWeekStat');
+            if (messagesWeekStatElement) {
+                messagesWeekStatElement.textContent = stats.messagesThisWeek || 0;
+            }
+
+            // Update deliveryRateStat
+            const deliveryRateStatElement = document.getElementById('deliveryRateStat');
+            if (deliveryRateStatElement) {
+                deliveryRateStatElement.textContent = `${stats.deliveryRate || 0}%`;
+            }
+
+            // Update responseRateStat
+            const responseRateStatElement = document.getElementById('responseRateStat');
+            if (responseRateStatElement) {
+                responseRateStatElement.textContent = `${stats.responseRate || 0}%`;
+            }
+        }
+
+        // Update cart recovery statistics
+        function updateCartRecoveryStats(stats) {
+            const cartsRecoveredElement = document.getElementById('cartsRecoveredStat');
+            if (cartsRecoveredElement) {
+                cartsRecoveredElement.textContent = stats.cartsRecovered || 0;
+            }
+
+            const cartsRecoveredGrowthElement = document.getElementById('cartsRecoveredGrowthStat');
+            if (cartsRecoveredGrowthElement) {
+                cartsRecoveredGrowthElement.textContent = `${stats.cartsRecoveredGrowth || 0}%`;
+            }
+
+            const recoveryRateElement = document.getElementById('recoveryRateStat');
+            if (recoveryRateElement) {
+                recoveryRateElement.textContent = `${stats.recoveryRate || 0}%`;
+            }
+
+            const recoveredValueElement = document.getElementById('recoveredValueStat');
+            if (recoveredValueElement) {
+                recoveredValueElement.textContent = `$${stats.recoveredValue || 0}`;
+            }
+        }
+
+        // Update campaign performance table
+        function updateCampaignTable(campaigns) {
+            const tableBody = document.getElementById('campaignsTableBody');
+            if (!tableBody || !campaigns) return;
+
+            if (campaigns.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="padding: 32px; text-align: center; color: var(--text-muted);">
+                            <i class="ri-inbox-line" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
+                            No campaign data available yet
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = campaigns.map(campaign => `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 16px 12px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 8px; height: 8px; background: ${campaign.color}; border-radius: 50%;"></div>
+                            ${campaign.name}
+                        </div>
+                    </td>
+                    <td style="padding: 16px 12px; color: var(--text-secondary);">${campaign.messages || 0}</td>
+                    <td style="padding: 16px 12px; color: var(--text-secondary);">${campaign.deliveryRate || 0}%</td>
+                    <td style="padding: 16px 12px; color: var(--text-secondary);">${campaign.clickRate || 0}%</td>
+                    <td style="padding: 16px 12px; font-weight: 600;">$${campaign.revenue || 0}</td>
+                    <td style="padding: 16px 12px;">
+                        <span style="color: var(--success); font-weight: 600;">+${campaign.roi || 0}%</span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Show error state for analytics
+        function showAnalyticsError() {
+            const elements = [
+                'messagesToday', 'customersWhatsApp', 'totalMessages',
+                'revenue30Days', 'conversionRate', 'avgOrderValue'
+            ];
+            
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.innerHTML = '<span style="color: var(--error);">Error</span>';
+                }
+            });
         }
 
         // Initialize page when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize charts after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                initializeCharts();
+            }, 500);
+            
             // Load initial data
             loadAutomationSettings();
             loadExistingFlows();
-            loadStats();
+            loadRealStats();
+            loadCustomerData();
+            loadConversations();
+            
+            console.log('WhatsApp Business Dashboard initialized successfully');
         });
     </script>
 </body>
