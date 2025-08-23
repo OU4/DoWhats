@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create WhatsApp Flow - Shopify WhatsApp Integration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Upgrade Banner */
+        .upgrade-banner {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .upgrade-banner .content {
+            flex: 1;
+        }
+
+        .upgrade-banner h3 {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .upgrade-banner p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .upgrade-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .upgrade-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            min-height: calc(100vh - 120px);
+        }
+
+        .form-section {
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        .preview-section {
+            background: #f8fafc;
+            border-left: 1px solid #e2e8f0;
+            padding: 32px;
+            position: sticky;
+            top: 0;
+        }
+
+        /* Form Styles */
+        .form-header {
+            margin-bottom: 32px;
+        }
+
+        .form-header h1 {
+            font-size: 28px;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .form-header p {
+            color: #64748b;
+            font-size: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #4f46e5;
+            ring: 2px;
+            ring-color: rgba(79, 70, 229, 0.2);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-group.inline {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .time-input {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .time-input input {
+            width: 80px;
+        }
+
+        /* Radio Group */
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .radio-option:hover {
+            background: #f9fafb;
+        }
+
+        .radio-option input[type="radio"]:checked + .radio-content {
+            color: #4f46e5;
+        }
+
+        .radio-option:has(input:checked) {
+            border-color: #4f46e5;
+            background: #f0f7ff;
+        }
+
+        .radio-content h4 {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .radio-content p {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        /* Button Configuration */
+        .button-config {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 16px;
+        }
+
+        .button-config h4 {
+            margin-bottom: 16px;
+            color: #374151;
+        }
+
+        .quick-reply-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .quick-reply-item input {
+            flex: 1;
+        }
+
+        .btn-remove {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn-add {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        /* Preview Styles */
+        .preview-header {
+            margin-bottom: 24px;
+        }
+
+        .preview-header h2 {
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .preview-header p {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .phone-preview {
+            background: #1f2937;
+            border-radius: 24px;
+            padding: 16px;
+            max-width: 320px;
+            margin: 0 auto;
+        }
+
+        .phone-header {
+            background: #25d366;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .contact-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #25d366;
+            font-weight: bold;
+        }
+
+        .contact-info h4 {
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .contact-info p {
+            font-size: 12px;
+            opacity: 0.8;
+            margin: 0;
+        }
+
+        .message-bubble {
+            background: white;
+            margin: 16px 12px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-image {
+            width: 100%;
+            height: 160px;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .message-content {
+            padding: 16px;
+        }
+
+        .message-text {
+            color: #1f2937;
+            line-height: 1.4;
+            margin-bottom: 16px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .message-text.rtl {
+            direction: rtl;
+            text-align: right;
+        }
+
+        .message-button {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .quick-reply-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .quick-reply-btn {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+        }
+
+        .message-footer {
+            padding: 12px 16px;
+            border-top: 1px solid #f1f5f9;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 16px;
+            padding: 24px 32px;
+            border-top: 1px solid #e5e7eb;
+            background: #f9fafb;
+        }
+
+        .btn-secondary {
+            flex: 1;
+            padding: 12px 24px;
+            border: 1px solid #d1d5db;
+            background: white;
+            color: #374151;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            flex: 2;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: #f9fafb;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4);
+        }
+
+        /* Collapsible Section */
+        .collapsible {
+            margin-top: 32px;
+        }
+
+        .collapsible-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .collapsible-content {
+            display: none;
+            padding: 16px;
+            border: 1px solid #e5e7eb;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .collapsible.active .collapsible-content {
+            display: block;
+        }
+
+        .help-link {
+            color: #4f46e5;
+            text-decoration: none;
+            font-size: 13px;
+        }
+
+        .help-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .preview-section {
+                order: -1;
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Upgrade Banner -->
+        <div class="upgrade-banner">
+            <div class="content">
+                <h3>Unlock Advanced Automation Features</h3>
+                <p>Power Automation and Elite plans offer features like automated campaigns and abandoned cart flows.</p>
+            </div>
+            <a href="#" class="upgrade-btn">Upgrade Plan</a>
+        </div>
+
+        <div class="main-layout">
+            <!-- Form Section -->
+            <div class="form-section">
+                <div class="form-header">
+                    <h1>Create WhatsApp Flow</h1>
+                    <p>Set up an automated WhatsApp message sequence to engage your customers</p>
+                </div>
+
+                <form id="flow-form">
+                    <!-- Basic Configuration -->
+                    <div class="form-group">
+                        <label for="flowName">Flow Name</label>
+                        <input type="text" id="flowName" name="flowName" placeholder="Enter flow name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="flowType">Flow Type</label>
+                        <select id="flowType" name="flowType" required onchange="updateFlowTypeTemplate()">
+                            <option value="">Select flow type</option>
+                            <option value="abandoned_cart">Abandoned Cart Recovery</option>
+                            <option value="welcome">Welcome Message</option>
+                            <option value="order_confirmation">Order Confirmation</option>
+                            <option value="shipping_update">Shipping Update</option>
+                            <option value="review_request">Review Request</option>
+                            <option value="birthday">Birthday Message</option>
+                            <option value="back_in_stock">Back in Stock Notification</option>
+                            <option value="promotional">Promotional Message</option>
+                            <option value="order_delivered">Order Delivered</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="flowExample">Flow Examples</label>
+                        <select id="flowExample" name="flowExample">
+                            <option value="">Select a template</option>
+                            <option value="abandoned_cart_15min">Abandoned Cart Sent After 15 Minutes</option>
+                            <option value="abandoned_cart_1hour">Abandoned Cart Sent After 1 Hour</option>
+                            <option value="abandoned_cart_24hour">Abandoned Cart Sent After 24 Hours</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="language">Language</label>
+                        <select id="language" name="language" onchange="updateLanguageTemplate()">
+                            <option value="en">English</option>
+                            <option value="es">Spanish</option>
+                            <option value="ar">العربية (Arabic)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group inline">
+                        <div>
+                            <label for="triggerDelay">Time Sent After</label>
+                            <div class="time-input">
+                                <input type="number" id="triggerDelay" name="triggerDelay" value="15" min="1" max="1440" onchange="updatePreview()">
+                                <span>minutes after cart is abandoned</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Message Content -->
+                    <div class="form-group">
+                        <label for="messageContent">Message</label>
+                        <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+                            <select id="placeholderSelector" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; background: #f9fafb;">
+                                <option value="">Insert placeholder...</option>
+                                <optgroup label="Customer Info">
+                                    <option value="{{customer_first_name}}">{{customer_first_name}} - Customer's first name</option>
+                                    <option value="{{customer_name}}">{{customer_name}} - Customer's full name</option>
+                                </optgroup>
+                                <optgroup label="Order Details">
+                                    <option value="{{order_number}}">{{order_number}} - Order number (e.g. #1001)</option>
+                                    <option value="{{cart_value}}">{{cart_value}} - Order total with currency</option>
+                                    <option value="{{total_price}}">{{total_price}} - Order total amount only</option>
+                                    <option value="{{currency}}">{{currency}} - Currency code (e.g. USD)</option>
+                                    <option value="{{order_total}}">{{order_total}} - Same as cart_value</option>
+                                </optgroup>
+                                <optgroup label="Products">
+                                    <option value="{{product_name}}">{{product_name}} - First product name</option>
+                                    <option value="{{items}}">{{items}} - List of all products</option>
+                                </optgroup>
+                                <optgroup label="Shipping">
+                                    <option value="{{delivery_estimate}}">{{delivery_estimate}} - Estimated delivery time</option>
+                                    <option value="{{tracking_number}}">{{tracking_number}} - Package tracking number</option>
+                                    <option value="{{shipping_address}}">{{shipping_address}} - Delivery address</option>
+                                </optgroup>
+                                <optgroup label="Links">
+                                    <option value="{{order_status_url}}">{{order_status_url}} - Order tracking URL</option>
+                                </optgroup>
+                            </select>
+                            <button type="button" onclick="insertPlaceholder()" style="padding: 6px 12px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer;">
+                                Insert
+                            </button>
+                        </div>
+                        <textarea id="messageContent" name="messageContent" placeholder="Hi {{customer_first_name}}! 👋
+
+You left some amazing items in your cart. Don't miss out on these great products!
+
+Complete your purchase now to secure your items." required oninput="updatePreview()"></textarea>
+                        <small style="color: #6b7280; font-size: 12px;">
+                            Use the dropdown above to insert personalization placeholders, or type them manually
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="footerText">Footer (Optional)</label>
+                        <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+                            <select id="footerPlaceholderSelector" style="padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; background: #f9fafb;">
+                                <option value="">Insert placeholder...</option>
+                                <option value="{{customer_first_name}}">{{customer_first_name}} - Customer's first name</option>
+                                <option value="{{order_number}}">{{order_number}} - Order number</option>
+                                <option value="{{order_status_url}}">{{order_status_url}} - Order tracking URL</option>
+                            </select>
+                            <button type="button" onclick="insertFooterPlaceholder()" style="padding: 6px 12px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer;">
+                                Insert
+                            </button>
+                        </div>
+                        <input type="text" id="footerText" name="footerText" placeholder='To opt-out, Please reply "Stop"' oninput="updatePreview()">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="discountCode">Discount code (Optional)</label>
+                        <input type="text" id="discountCode" name="discountCode" placeholder="SAVE10">
+                        <small>
+                            <a href="#" class="help-link">Learn how to create discount codes</a>
+                        </small>
+                    </div>
+
+                    <!-- Image Configuration -->
+                    <div class="form-group">
+                        <label>Image Type</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="imageType" value="dynamic" checked>
+                                <div class="radio-content">
+                                    <h4>Dynamic Product Image</h4>
+                                    <p>Automatically uses the image of the product the customer left in their cart</p>
+                                </div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="imageType" value="custom">
+                                <div class="radio-content">
+                                    <h4>Custom Image URL</h4>
+                                    <p>Use a specific image from a web link</p>
+                                </div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="imageType" value="none">
+                                <div class="radio-content">
+                                    <h4>No Image</h4>
+                                    <p>Send the message without an image</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="customImageGroup" style="display: none;">
+                        <label for="imageUrl">Custom Image URL</label>
+                        <input type="url" id="imageUrl" name="imageUrl" placeholder="https://example.com/image.jpg">
+                    </div>
+
+                    <!-- Button Configuration -->
+                    <div class="form-group">
+                        <label for="buttonText">Complete Purchase Button Text</label>
+                        <input type="text" id="buttonText" name="buttonText" value="Complete Your Order" required>
+                    </div>
+
+                    <div class="button-config">
+                        <h4>Quick Reply Buttons</h4>
+                        <div id="quickReplies">
+                            <div class="quick-reply-item">
+                                <input type="text" placeholder="Button text (e.g., Stop)" value="Stop">
+                                <button type="button" class="btn-remove" onclick="removeQuickReply(this)">Remove</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-add" onclick="addQuickReply()">+ Add Quick Reply</button>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <div class="collapsible">
+                        <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                            <span>▶</span>
+                            <h4>Advanced Flow Settings</h4>
+                        </div>
+                        <div class="collapsible-content">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" name="enableTracking" checked>
+                                    Enable delivery tracking
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" name="enablePersonalization" checked>
+                                    Enable advanced personalization
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label for="maxRetries">Maximum retries</label>
+                                <input type="number" id="maxRetries" name="maxRetries" value="3" min="0" max="10">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Preview Section -->
+            <div class="preview-section">
+                <div class="preview-header">
+                    <h2>Live Preview</h2>
+                    <p>See how your message will appear on WhatsApp</p>
+                </div>
+
+                <div class="phone-preview">
+                    <div class="phone-header">
+                        <div class="contact-avatar">S</div>
+                        <div class="contact-info">
+                            <h4>Your Store Name</h4>
+                            <p>online</p>
+                        </div>
+                    </div>
+
+                    <div class="message-bubble">
+                        <div class="message-image" id="previewImage">
+                            📦 Dynamic Product Image
+                        </div>
+                        <div class="message-content">
+                            <div class="message-text" id="previewText">
+                                Hi John! 👋<br><br>
+                                You left some amazing items in your cart. Don't miss out on these great products!<br><br>
+                                Complete your purchase now to secure your items.
+                            </div>
+                            <button class="message-button" id="previewButton">Complete Your Order</button>
+                            <div class="quick-reply-buttons" id="previewQuickReplies">
+                                <span class="quick-reply-btn">Stop</span>
+                            </div>
+                        </div>
+                        <div class="message-footer" id="previewFooter">
+                            To opt-out, Please reply "Stop"
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button type="button" class="btn-secondary" onclick="cancelFlow()">Cancel</button>
+            <button type="button" class="btn-primary" onclick="createFlow()">Create Flow</button>
+        </div>
+    </div>
+
+    <script>
+        // Get session token from URL params for API requests (same as admin.html)
+        function getSessionToken() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('id_token');
+        }
+
+        // Insert placeholder at cursor position in message textarea
+        function insertPlaceholder() {
+            const selector = document.getElementById('placeholderSelector');
+            const textarea = document.getElementById('messageContent');
+            const placeholder = selector.value;
+            
+            if (!placeholder) {
+                alert('Please select a placeholder to insert');
+                return;
+            }
+            
+            // Get cursor position
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            
+            // Insert placeholder at cursor position
+            const textBefore = textarea.value.substring(0, start);
+            const textAfter = textarea.value.substring(end);
+            
+            textarea.value = textBefore + placeholder + textAfter;
+            
+            // Move cursor to end of inserted placeholder
+            const newCursorPosition = start + placeholder.length;
+            textarea.setSelectionRange(newCursorPosition, newCursorPosition);
+            textarea.focus();
+            
+            // Reset selector
+            selector.value = '';
+            
+            // Update preview
+            updatePreview();
+        }
+
+        // Insert placeholder at cursor position in footer field
+        function insertFooterPlaceholder() {
+            const selector = document.getElementById('footerPlaceholderSelector');
+            const input = document.getElementById('footerText');
+            const placeholder = selector.value;
+            
+            if (!placeholder) {
+                alert('Please select a placeholder to insert');
+                return;
+            }
+            
+            // Get cursor position
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            
+            // Insert placeholder at cursor position
+            const textBefore = input.value.substring(0, start);
+            const textAfter = input.value.substring(end);
+            
+            input.value = textBefore + placeholder + textAfter;
+            
+            // Move cursor to end of inserted placeholder
+            const newCursorPosition = start + placeholder.length;
+            input.setSelectionRange(newCursorPosition, newCursorPosition);
+            input.focus();
+            
+            // Reset selector
+            selector.value = '';
+            
+            // Update preview
+            updatePreview();
+        }
+
+        // Flow type and language-specific templates
+        const flowTypeTemplates = {
+            abandoned_cart: {
+                en: {
+                    message: `Hi {{customer_first_name}}! 👋
+
+You left some amazing items in your cart. Don't miss out on these great products!
+
+Complete your purchase now to secure your items.`,
+                    footer: 'To opt-out, Please reply "Stop"',
+                    button: 'Complete Your Order'
+                },
+                es: {
+                    message: `¡Hola {{customer_first_name}}! 👋
+
+Dejaste algunos artículos increíbles en tu carrito. ¡No te pierdas estos excelentes productos!
+
+Completa tu compra ahora para asegurar tus artículos.`,
+                    footer: 'Para cancelar, responde "Stop"',
+                    button: 'Completar Pedido'
+                },
+                ar: {
+                    message: `مرحباً {{customer_first_name}}! 👋
+
+لقد تركت بعض المنتجات الرائعة في سلة التسوق. لا تفوت هذه المنتجات المذهلة!
+
+أكمل عملية الشراء الآن لضمان حصولك على منتجاتك.`,
+                    footer: 'للإلغاء، يرجى الرد بـ "Stop"',
+                    button: 'إكمال الطلب'
+                }
+            },
+            welcome: {
+                en: {
+                    message: `Welcome to our store, {{customer_first_name}}! 🎉
+
+Thank you for joining us! We're excited to have you as part of our community.
+
+Enjoy 10% off your first order with code: WELCOME10`,
+                    footer: 'Reply STOP to unsubscribe',
+                    button: 'Shop Now'
+                },
+                es: {
+                    message: `¡Bienvenido a nuestra tienda, {{customer_first_name}}! 🎉
+
+¡Gracias por unirte a nosotros! Estamos emocionados de tenerte como parte de nuestra comunidad.
+
+Disfruta 10% de descuento en tu primer pedido con código: WELCOME10`,
+                    footer: 'Responde STOP para cancelar',
+                    button: 'Comprar Ahora'
+                },
+                ar: {
+                    message: `مرحباً بك في متجرنا، {{customer_first_name}}! 🎉
+
+شكراً لانضمامك إلينا! نحن متحمسون لوجودك كجزء من مجتمعنا.
+
+استمتع بخصم 10% على طلبك الأول بالرمز: WELCOME10`,
+                    footer: 'رد بـ STOP للإلغاء',
+                    button: 'تسوق الآن'
+                }
+            },
+            order_confirmation: {
+                en: {
+                    message: `Hi {{customer_first_name}}! ✅
+
+Your order #{{order_number}} has been confirmed!
+
+Order Total: {{cart_value}}
+We'll notify you when your order ships.`,
+                    footer: 'Questions? Reply to this message',
+                    button: 'Track Order'
+                },
+                es: {
+                    message: `¡Hola {{customer_first_name}}! ✅
+
+¡Tu pedido #{{order_number}} ha sido confirmado!
+
+Total del Pedido: {{cart_value}}
+Te notificaremos cuando tu pedido sea enviado.`,
+                    footer: '¿Preguntas? Responde a este mensaje',
+                    button: 'Rastrear Pedido'
+                },
+                ar: {
+                    message: `مرحباً {{customer_first_name}}! ✅
+
+تم تأكيد طلبك #{{order_number}}!
+
+إجمالي الطلب: {{cart_value}}
+سنخبرك عندما يتم شحن طلبك.`,
+                    footer: 'أسئلة؟ رد على هذه الرسالة',
+                    button: 'تتبع الطلب'
+                }
+            },
+            shipping_update: {
+                en: {
+                    message: `Great news, {{customer_first_name}}! 📦
+
+Your order #{{order_number}} is on its way!
+
+Tracking: {{tracking_number}}
+Expected delivery: 2-3 business days`,
+                    footer: 'Track your package anytime',
+                    button: 'Track Package'
+                },
+                es: {
+                    message: `¡Excelentes noticias, {{customer_first_name}}! 📦
+
+¡Tu pedido #{{order_number}} está en camino!
+
+Seguimiento: {{tracking_number}}
+Entrega esperada: 2-3 días hábiles`,
+                    footer: 'Rastrea tu paquete en cualquier momento',
+                    button: 'Rastrear Paquete'
+                },
+                ar: {
+                    message: `أخبار رائعة، {{customer_first_name}}! 📦
+
+طلبك #{{order_number}} في الطريق!
+
+التتبع: {{tracking_number}}
+التسليم المتوقع: 2-3 أيام عمل`,
+                    footer: 'تتبع الطرد في أي وقت',
+                    button: 'تتبع الطرد'
+                }
+            },
+            review_request: {
+                en: {
+                    message: `Hi {{customer_first_name}}! ⭐
+
+How was your experience with {{product_name}}?
+
+We'd love to hear your feedback! Your review helps other customers make informed decisions.`,
+                    footer: 'Thank you for your business!',
+                    button: 'Leave Review'
+                },
+                es: {
+                    message: `¡Hola {{customer_first_name}}! ⭐
+
+¿Cómo fue tu experiencia con {{product_name}}?
+
+¡Nos encantaría escuchar tus comentarios! Tu reseña ayuda a otros clientes a tomar decisiones informadas.`,
+                    footer: '¡Gracias por tu compra!',
+                    button: 'Dejar Reseña'
+                },
+                ar: {
+                    message: `مرحباً {{customer_first_name}}! ⭐
+
+كيف كانت تجربتك مع {{product_name}}؟
+
+نحب أن نسمع رأيك! تقييمك يساعد العملاء الآخرين على اتخاذ قرارات مدروسة.`,
+                    footer: 'شكراً لك على شرائك!',
+                    button: 'اترك تقييم'
+                }
+            },
+            birthday: {
+                en: {
+                    message: `Happy Birthday, {{customer_first_name}}! 🎂🎉
+
+Wishing you a wonderful day filled with joy and happiness!
+
+Here's a special 20% birthday discount just for you: BDAY20`,
+                    footer: 'Valid for 7 days',
+                    button: 'Claim Gift'
+                },
+                es: {
+                    message: `¡Feliz Cumpleaños, {{customer_first_name}}! 🎂🎉
+
+¡Te deseamos un día maravilloso lleno de alegría y felicidad!
+
+Aquí tienes un descuento especial de cumpleaños del 20% solo para ti: BDAY20`,
+                    footer: 'Válido por 7 días',
+                    button: 'Reclamar Regalo'
+                },
+                ar: {
+                    message: `عيد ميلاد سعيد، {{customer_first_name}}! 🎂🎉
+
+نتمنى لك يوماً رائعاً مليئاً بالفرح والسعادة!
+
+إليك خصم عيد ميلاد خاص 20% لك فقط: BDAY20`,
+                    footer: 'صالح لمدة 7 أيام',
+                    button: 'استلم الهدية'
+                }
+            },
+            back_in_stock: {
+                en: {
+                    message: `Good news, {{customer_first_name}}! 🎊
+
+{{product_name}} is back in stock!
+
+Don't wait - grab yours before it sells out again.`,
+                    footer: 'Limited quantity available',
+                    button: 'Shop Now'
+                },
+                es: {
+                    message: `¡Buenas noticias, {{customer_first_name}}! 🎊
+
+¡{{product_name}} está de vuelta en stock!
+
+No esperes - consigue el tuyo antes de que se agote nuevamente.`,
+                    footer: 'Cantidad limitada disponible',
+                    button: 'Comprar Ahora'
+                },
+                ar: {
+                    message: `أخبار سارة، {{customer_first_name}}! 🎊
+
+{{product_name}} متوفر مرة أخرى!
+
+لا تنتظر - احصل على منتجك قبل أن ينفد مرة أخرى.`,
+                    footer: 'كمية محدودة متاحة',
+                    button: 'تسوق الآن'
+                }
+            },
+            promotional: {
+                en: {
+                    message: `Flash Sale Alert, {{customer_first_name}}! ⚡
+
+🔥 Up to 50% OFF on selected items!
+⏰ Limited time offer - ends in 24 hours
+
+Don't miss out on these incredible deals!`,
+                    footer: 'Terms and conditions apply',
+                    button: 'Shop Sale'
+                },
+                es: {
+                    message: `¡Alerta de Venta Flash, {{customer_first_name}}! ⚡
+
+🔥 ¡Hasta 50% de descuento en artículos seleccionados!
+⏰ Oferta por tiempo limitado - termina en 24 horas
+
+¡No te pierdas estas ofertas increíbles!`,
+                    footer: 'Se aplican términos y condiciones',
+                    button: 'Comprar Oferta'
+                },
+                ar: {
+                    message: `تنبيه تخفيضات سريعة، {{customer_first_name}}! ⚡
+
+🔥 خصم يصل إلى 50% على منتجات مختارة!
+⏰ عرض لوقت محدود - ينتهي خلال 24 ساعة
+
+لا تفوت هذه الصفقات المذهلة!`,
+                    footer: 'تطبق الشروط والأحكام',
+                    button: 'تسوق العرض'
+                }
+            },
+            order_delivered: {
+                en: {
+                    message: `Your order has arrived, {{customer_first_name}}! 📦✅
+
+Order #{{order_number}} has been successfully delivered.
+
+We hope you love your new items! How was your experience?`,
+                    footer: 'Enjoy your purchase!',
+                    button: 'Rate Experience'
+                },
+                es: {
+                    message: `¡Tu pedido ha llegado, {{customer_first_name}}! 📦✅
+
+El pedido #{{order_number}} ha sido entregado exitosamente.
+
+¡Esperamos que ames tus nuevos artículos! ¿Cómo fue tu experiencia?`,
+                    footer: '¡Disfruta tu compra!',
+                    button: 'Calificar Experiencia'
+                },
+                ar: {
+                    message: `وصل طلبك، {{customer_first_name}}! 📦✅
+
+تم تسليم الطلب #{{order_number}} بنجاح.
+
+نأمل أن تحب منتجاتك الجديدة! كيف كانت تجربتك؟`,
+                    footer: 'استمتع بشرائك!',
+                    button: 'قيم التجربة'
+                }
+            }
+        };
+
+        function updateLanguageTemplate() {
+            const language = document.getElementById('language').value;
+            const flowType = document.getElementById('flowType').value;
+            
+            if (flowType && flowTypeTemplates[flowType] && flowTypeTemplates[flowType][language]) {
+                const template = flowTypeTemplates[flowType][language];
+                
+                // Only update if fields are empty or contain default content
+                const messageField = document.getElementById('messageContent');
+                const footerField = document.getElementById('footerText');
+                const buttonField = document.getElementById('buttonText');
+                
+                // Check if current content is default/empty, then update
+                if (!messageField.value || messageField.value === messageField.placeholder) {
+                    messageField.value = template.message;
+                }
+                if (!footerField.value || footerField.value === footerField.placeholder) {
+                    footerField.value = template.footer;
+                }
+                if (!buttonField.value || isDefaultButtonText(buttonField.value)) {
+                    buttonField.value = template.button;
+                }
+            }
+            
+            updatePreview();
+        }
+
+        function updateFlowTypeTemplate() {
+            const flowType = document.getElementById('flowType').value;
+            const language = document.getElementById('language').value;
+            
+            if (flowType && flowTypeTemplates[flowType] && flowTypeTemplates[flowType][language]) {
+                const template = flowTypeTemplates[flowType][language];
+                
+                // Update fields with new flow type template
+                const messageField = document.getElementById('messageContent');
+                const footerField = document.getElementById('footerText');
+                const buttonField = document.getElementById('buttonText');
+                
+                messageField.value = template.message;
+                footerField.value = template.footer;
+                buttonField.value = template.button;
+            }
+            
+            updatePreview();
+        }
+
+        function isDefaultButtonText(text) {
+            const defaultButtons = [
+                'Complete Your Order', 'Completar Pedido', 'إكمال الطلب',
+                'Shop Now', 'Comprar Ahora', 'تسوق الآن',
+                'Track Order', 'Rastrear Pedido', 'تتبع الطلب',
+                'Track Package', 'Rastrear Paquete', 'تتبع الطرد',
+                'Leave Review', 'Dejar Reseña', 'اترك تقييم',
+                'Claim Gift', 'Reclamar Regalo', 'استلم الهدية',
+                'Shop Sale', 'Comprar Oferta', 'تسوق العرض',
+                'Rate Experience', 'Calificar Experiencia', 'قيم التجربة'
+            ];
+            return defaultButtons.includes(text);
+        }
+
+        // Real-time preview updates
+        document.getElementById('messageContent').addEventListener('input', updatePreview);
+        document.getElementById('buttonText').addEventListener('input', updatePreview);
+        document.getElementById('footerText').addEventListener('input', updatePreview);
+        document.querySelectorAll('input[name="imageType"]').forEach(radio => {
+            radio.addEventListener('change', updateImagePreview);
+        });
+        document.getElementById('imageUrl').addEventListener('input', updateImagePreview);
+
+        // Show/hide custom image URL field
+        document.querySelectorAll('input[name="imageType"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const customImageGroup = document.getElementById('customImageGroup');
+                if (this.value === 'custom') {
+                    customImageGroup.style.display = 'block';
+                } else {
+                    customImageGroup.style.display = 'none';
+                }
+            });
+        });
+
+        function updatePreview() {
+            const messageContent = document.getElementById('messageContent').value || 'Hi {{customer_first_name}}! 👋\n\nYou left some amazing items in your cart. Don\'t miss out on these great products!\n\nComplete your purchase now to secure your items.';
+            const buttonText = document.getElementById('buttonText').value || 'Complete Your Order';
+            const footerText = document.getElementById('footerText').value || 'To opt-out, Please reply "Stop"';
+            const language = document.getElementById('language').value;
+
+            // Language-specific sample data
+            const sampleData = {
+                en: {
+                    customerName: 'John',
+                    cartValue: '$49.99',
+                    productName: 'Amazing Product',
+                    orderNumber: 'ORD-12345',
+                    trackingNumber: 'TRK-98765'
+                },
+                es: {
+                    customerName: 'Juan',
+                    cartValue: '$49.99',
+                    productName: 'Producto Increíble',
+                    orderNumber: 'PED-12345',
+                    trackingNumber: 'SEG-98765'
+                },
+                ar: {
+                    customerName: 'أحمد',
+                    cartValue: '49.99$',
+                    productName: 'منتج رائع',
+                    orderNumber: 'رقم-12345',
+                    trackingNumber: 'تتبع-98765'
+                }
+            };
+
+            const data = sampleData[language] || sampleData.en;
+
+            // Replace placeholders for preview
+            let previewText = messageContent
+                .replace(/\{\{customer_first_name\}\}/g, data.customerName)
+                .replace(/\{\{cart_value\}\}/g, data.cartValue)
+                .replace(/\{\{product_name\}\}/g, data.productName)
+                .replace(/\{\{order_number\}\}/g, data.orderNumber)
+                .replace(/\{\{tracking_number\}\}/g, data.trackingNumber)
+                .replace(/\n/g, '<br>');
+
+            // Apply RTL styling for Arabic
+            const messageElement = document.getElementById('previewText');
+            const buttonElement = document.getElementById('previewButton');
+            const footerElement = document.getElementById('previewFooter');
+            
+            messageElement.innerHTML = previewText;
+            
+            if (language === 'ar') {
+                messageElement.classList.add('rtl');
+                buttonElement.style.direction = 'rtl';
+                footerElement.style.direction = 'rtl';
+                footerElement.style.textAlign = 'right';
+            } else {
+                messageElement.classList.remove('rtl');
+                buttonElement.style.direction = 'ltr';
+                footerElement.style.direction = 'ltr';
+                footerElement.style.textAlign = 'left';
+            }
+
+            document.getElementById('previewButton').textContent = buttonText;
+            document.getElementById('previewFooter').textContent = footerText;
+
+            updateQuickRepliesPreview();
+        }
+
+        function updateImagePreview() {
+            const imageType = document.querySelector('input[name="imageType"]:checked').value;
+            const imageUrl = document.getElementById('imageUrl').value;
+            const previewImage = document.getElementById('previewImage');
+
+            switch(imageType) {
+                case 'dynamic':
+                    previewImage.innerHTML = '📦 Dynamic Product Image';
+                    previewImage.style.background = '#f3f4f6';
+                    break;
+                case 'custom':
+                    if (imageUrl) {
+                        previewImage.innerHTML = `<img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.innerHTML='❌ Invalid Image URL'">`;
+                        previewImage.style.background = 'transparent';
+                    } else {
+                        previewImage.innerHTML = '🖼️ Custom Image URL';
+                        previewImage.style.background = '#f3f4f6';
+                    }
+                    break;
+                case 'none':
+                    previewImage.style.display = 'none';
+                    break;
+            }
+
+            if (imageType !== 'none') {
+                previewImage.style.display = 'flex';
+            }
+        }
+
+        function updateQuickRepliesPreview() {
+            const quickReplies = document.getElementById('previewQuickReplies');
+            const inputs = document.querySelectorAll('#quickReplies input');
+            quickReplies.innerHTML = '';
+
+            inputs.forEach(input => {
+                if (input.value.trim()) {
+                    const btn = document.createElement('span');
+                    btn.className = 'quick-reply-btn';
+                    btn.textContent = input.value.trim();
+                    quickReplies.appendChild(btn);
+                }
+            });
+        }
+
+        function addQuickReply() {
+            const container = document.getElementById('quickReplies');
+            const item = document.createElement('div');
+            item.className = 'quick-reply-item';
+            item.innerHTML = `
+                <input type="text" placeholder="Button text" oninput="updateQuickRepliesPreview()">
+                <button type="button" class="btn-remove" onclick="removeQuickReply(this)">Remove</button>
+            `;
+            container.appendChild(item);
+        }
+
+        function removeQuickReply(button) {
+            button.parentElement.remove();
+            updateQuickRepliesPreview();
+        }
+
+        function toggleCollapsible(header) {
+            const collapsible = header.parentElement;
+            const arrow = header.querySelector('span');
+            
+            collapsible.classList.toggle('active');
+            arrow.textContent = collapsible.classList.contains('active') ? '▼' : '▶';
+        }
+
+        function cancelFlow() {
+            if (confirm('Are you sure you want to cancel? All changes will be lost.')) {
+                // Redirect back to app dashboard with session token
+                const currentUrl = new URL(window.location);
+                const adminUrl = `/app${currentUrl.search}`;
+                window.location.href = adminUrl;
+            }
+        }
+
+        async function createFlow() {
+            const form = document.getElementById('flow-form');
+            const formData = new FormData(form);
+            
+            // Collect quick replies
+            const quickReplies = Array.from(document.querySelectorAll('#quickReplies input'))
+                .map(input => input.value.trim())
+                .filter(value => value);
+
+            const flowData = {
+                flowName: formData.get('flowName'),
+                flowType: formData.get('flowType'),
+                flowExample: formData.get('flowExample'),
+                language: formData.get('language'),
+                triggerDelayMinutes: parseInt(formData.get('triggerDelay')),
+                messageContent: formData.get('messageContent'),
+                footerText: formData.get('footerText'),
+                discountCode: formData.get('discountCode'),
+                imageType: formData.get('imageType'),
+                imageUrl: formData.get('imageUrl'),
+                buttonText: formData.get('buttonText'),
+                quickReplies: quickReplies
+            };
+
+            try {
+                // Add session token to headers (same as admin.html)
+                const sessionToken = getSessionToken();
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                
+                if (sessionToken) {
+                    headers['Authorization'] = `Bearer ${sessionToken}`;
+                }
+
+                const response = await fetch('/api/whatsapp-flows', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(flowData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ Flow created successfully!');
+                    // Redirect back to app dashboard with session token
+                    const currentUrl = new URL(window.location);
+                    const adminUrl = `/app${currentUrl.search}`;
+                    window.location.href = adminUrl;
+                } else {
+                    alert('❌ Error creating flow: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error creating flow. Please try again.');
+            }
+        }
+
+        // Initialize preview on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePreview();
+            updateImagePreview();
+        });
+        
+        // Also call immediately in case DOM is already loaded
+        updatePreview();
+        updateImagePreview();
+    </script>
+</body>
+</html>

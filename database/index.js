@@ -24,18 +24,29 @@ db.run('PRAGMA foreign_keys = ON');
 // Initialize all tables (only if needed)
 function initializeDatabase() {
   return new Promise((resolve, reject) => {
-    // Check if tables already exist to avoid unnecessary initialization
-    db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='shops'", (err, row) => {
+    // Check if all required tables exist
+    db.all(`
+      SELECT name FROM sqlite_master 
+      WHERE type='table' AND name IN ('shops', 'automation_settings', 'whatsapp_flows')
+    `, (err, rows) => {
       if (err) {
         reject(err);
         return;
       }
       
-      // If shops table exists, assume all tables are initialized
-      if (row) {
+      // Get list of existing tables
+      const existingTables = rows.map(row => row.name);
+      const requiredTables = ['shops', 'automation_settings', 'whatsapp_flows'];
+      const missingTables = requiredTables.filter(table => !existingTables.includes(table));
+      
+      // If all tables exist, skip initialization
+      if (missingTables.length === 0) {
+        console.log('✅ All database tables already exist');
         resolve();
         return;
       }
+      
+      console.log('🔄 Creating missing tables:', missingTables.join(', '));
       
       // Only initialize if tables don't exist
       const initStart = Date.now();
@@ -328,6 +339,54 @@ function initializeDatabase() {
         )
       `, (err) => {
         if (err) console.error('Error creating conversations table:', err);
+        
+      });
+
+      // 13. AUTOMATION SETTINGS TABLE
+      db.run(`
+        CREATE TABLE IF NOT EXISTS automation_settings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          shop_domain TEXT UNIQUE NOT NULL,
+          abandoned_cart_enabled BOOLEAN DEFAULT 1,
+          order_confirmation_enabled BOOLEAN DEFAULT 1,
+          shipping_updates_enabled BOOLEAN DEFAULT 1,
+          welcome_message_enabled BOOLEAN DEFAULT 1,
+          review_request_enabled BOOLEAN DEFAULT 0,
+          birthday_messages_enabled BOOLEAN DEFAULT 0,
+          back_in_stock_enabled BOOLEAN DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (shop_domain) REFERENCES shops(shop_domain) ON DELETE CASCADE
+        )
+      `, (err) => {
+        if (err) console.error('Error creating automation_settings table:', err);
+        
+      });
+
+      // 14. WHATSAPP FLOWS TABLE
+      db.run(`
+        CREATE TABLE IF NOT EXISTS whatsapp_flows (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          shop_domain TEXT NOT NULL,
+          flow_name TEXT NOT NULL,
+          flow_type TEXT NOT NULL,
+          flow_example TEXT,
+          language TEXT DEFAULT 'en',
+          trigger_delay_minutes INTEGER DEFAULT 15,
+          message_content TEXT NOT NULL,
+          footer_text TEXT,
+          discount_code TEXT,
+          image_type TEXT DEFAULT 'dynamic',
+          image_url TEXT,
+          button_text TEXT DEFAULT 'Complete Your Order',
+          quick_replies TEXT,
+          is_active BOOLEAN DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (shop_domain) REFERENCES shops(shop_domain) ON DELETE CASCADE
+        )
+      `, (err) => {
+        if (err) console.error('Error creating whatsapp_flows table:', err);
         
       });
 

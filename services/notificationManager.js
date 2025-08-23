@@ -121,6 +121,63 @@ class NotificationManager {
         return null;
       }
 
+      // Check automation settings first
+      try {
+        const automationSettings = await DatabaseQueries.getAutomationSettings(shopDomain);
+        if (!this.isNotificationEnabled(notificationType, automationSettings)) {
+          console.log(`⏸️ Notification type ${notificationType} is disabled for shop: ${shopDomain}`);
+          return null;
+        }
+      } catch (settingsError) {
+        console.warn('⚠️ Could not check automation settings, using default behavior:', settingsError.message);
+      }
+
+      // Try to get custom flow from database first
+      console.log(`🔍 Searching for custom template with language: ${language}`);
+      let customTemplate = await this.getCustomFlowTemplate(shopDomain, notificationType, language);
+      
+      // If no template found for requested language, try to find any active template for this type
+      if (!customTemplate && language !== 'en') {
+        console.log(`📝 No ${language} template found, trying English fallback`);
+        customTemplate = await this.getCustomFlowTemplate(shopDomain, notificationType, 'en');
+      }
+      
+      // If still no English template, try any language
+      if (!customTemplate) {
+        console.log(`📝 No English template found, trying any language`);
+        const flows = await DatabaseQueries.getWhatsAppFlows(shopDomain);
+        const typeMapping = {
+          'order_placed': 'order_confirmation',
+          'order_paid': 'order_confirmation',
+          'order_fulfilled': 'shipping_update', 
+          'order_out_for_delivery': 'shipping_update',
+          'order_delivered': 'order_delivered',
+          'abandoned_cart_1h': 'abandoned_cart',
+          'abandoned_cart_24h': 'abandoned_cart',
+          'abandoned_cart_48h': 'abandoned_cart',
+          'welcome_customer': 'welcome',
+          'review_request': 'review_request',
+          'birthday': 'birthday',
+          'back_in_stock': 'back_in_stock'
+        };
+        const flowType = typeMapping[notificationType];
+        customTemplate = flows.find(flow => 
+          flow.flow_type === flowType && 
+          flow.is_active
+        );
+        if (customTemplate) {
+          console.log(`🎯 Found custom flow in ${customTemplate.language}: "${customTemplate.flow_name || 'Unnamed Flow'}"`);
+        }
+      }
+
+      if (customTemplate) {
+        console.log(`🎯 Using custom flow template "${customTemplate.flow_name || 'Unnamed Flow'}" for ${notificationType}`);
+        return await this.sendCustomTemplate(shopDomain, customerPhone, customTemplate, data);
+      }
+
+      // Fall back to default templates
+      console.log(`📝 No custom flow found for ${notificationType}, using default template`);
+
       // Check if customer exists, create if not
       let customer = await this.getCustomer(shopDomain, customerPhone);
       if (!customer) {
@@ -379,6 +436,179 @@ class NotificationManager {
     }
 
     return results;
+  }
+
+  // Check if notification type is enabled in automation settings
+  isNotificationEnabled(notificationType, automationSettings) {
+    const typeMapping = {
+      'order_placed': 'orderConfirmation',
+      'order_paid': 'orderConfirmation', 
+      'order_fulfilled': 'shippingUpdates',
+      'order_out_for_delivery': 'shippingUpdates',
+      'order_delivered': 'shippingUpdates',
+      'abandoned_cart_1h': 'abandonedCart',
+      'abandoned_cart_24h': 'abandonedCart',
+      'abandoned_cart_48h': 'abandonedCart',
+      'welcome_customer': 'welcomeMessage',
+      'review_request': 'reviewRequest',
+      'birthday': 'birthdayMessages',
+      'back_in_stock': 'backInStock'
+    };
+
+    const settingKey = typeMapping[notificationType];
+    if (!settingKey) {
+      return true; // Enable by default for unknown types
+    }
+
+    return automationSettings[settingKey] !== false;
+  }
+
+  // Get custom flow template from database
+  async getCustomFlowTemplate(shopDomain, notificationType, language) {
+    try {
+      // Map notification types to flow types
+      const typeMapping = {
+        'order_placed': 'order_confirmation',
+        'order_paid': 'order_confirmation',
+        'order_fulfilled': 'shipping_update', 
+        'order_out_for_delivery': 'shipping_update',
+        'order_delivered': 'order_delivered',
+        'abandoned_cart_1h': 'abandoned_cart',
+        'abandoned_cart_24h': 'abandoned_cart',
+        'abandoned_cart_48h': 'abandoned_cart',
+        'welcome_customer': 'welcome',
+        'review_request': 'review_request',
+        'birthday': 'birthday',
+        'back_in_stock': 'back_in_stock'
+      };
+
+      const flowType = typeMapping[notificationType];
+      console.log(`🔍 Looking for custom flow: ${notificationType} → ${flowType} (${language})`);
+      
+      if (!flowType) {
+        console.log(`❌ No mapping found for notification type: ${notificationType}`);
+        return null;
+      }
+
+      const flows = await DatabaseQueries.getWhatsAppFlows(shopDomain);
+      console.log(`📋 Found ${flows.length} flows for shop ${shopDomain}:`, flows.map(f => `${f.flow_name} (${f.flow_type}, ${f.language}, active: ${f.is_active})`));
+      
+      const matchingFlow = flows.find(flow => 
+        flow.flow_type === flowType && 
+        flow.language === language && 
+        flow.is_active
+      );
+
+      if (matchingFlow) {
+        console.log(`✅ Found matching custom flow: "${matchingFlow.flow_name}"`);
+      } else {
+        console.log(`❌ No matching custom flow found for ${flowType} (${language})`);
+      }
+
+      return matchingFlow || null;
+    } catch (error) {
+      console.error('Error getting custom flow template:', error);
+      return null;
+    }
+  }
+
+  // Send message using custom template
+  async sendCustomTemplate(shopDomain, customerPhone, customTemplate, data) {
+    try {
+      // Replace placeholders in the custom template
+      let message = customTemplate.message_content;
+      
+      // Create a comprehensive data mapping to handle different placeholder names
+      const mappedData = {
+        ...data,
+        // Map common variations
+        customer_first_name: data.customer_name || data.customer_first_name || 'Customer',
+        cart_value: (data.currency || '') + ' ' + parseFloat(data.total_price || data.cart_value || '0.00').toFixed(2),
+        order_total: (data.currency || '') + ' ' + parseFloat(data.total_price || data.cart_value || '0.00').toFixed(2),
+        product_name: data.product_name || (data.items && data.items[0] ? data.items[0].name : 'Product'),
+        tracking_number: data.tracking_number || 'TBD'
+      };
+
+      console.log('🔄 Available data for template:', Object.keys(mappedData));
+      
+      // Replace all placeholders with mapped data
+      Object.keys(mappedData).forEach(key => {
+        const placeholder = `{{${key}}}`;
+        let value = mappedData[key] || '';
+        
+        // Handle special formatting for items array
+        if (key === 'items' && Array.isArray(value)) {
+          value = value.map(item => `• ${item.name} x${item.quantity}`).join('\n');
+        }
+        
+        message = message.replace(new RegExp(placeholder, 'g'), String(value));
+      });
+
+      // Add footer if exists
+      if (customTemplate.footer_text) {
+        message += '\n\n' + customTemplate.footer_text;
+      }
+
+      console.log(`📧 Sending custom template "${customTemplate.flow_name}" to ${customerPhone}`);
+
+      // Send the message via Twilio
+      if (!twilioClient) {
+        console.error('❌ Twilio client not initialized');
+        return null;
+      }
+
+      const result = await twilioClient.messages.create({
+        body: message,
+        from: process.env.TWILIO_WHATSAPP_NUMBER,
+        to: `whatsapp:${customerPhone}`
+      });
+
+      // Log the message to database
+      await this.logMessage(shopDomain, customerPhone, message, result.sid, 'outbound');
+
+      console.log(`✅ Custom template message sent successfully! SID: ${result.sid}`);
+      return result;
+
+    } catch (error) {
+      console.error('❌ Error sending custom template:', error);
+      try {
+        await this.logMessage(shopDomain, customerPhone, customTemplate.message_content, null, 'outbound', error.message);
+      } catch (logError) {
+        console.error('❌ Error logging failed message:', logError.message);
+      }
+      return null;
+    }
+  }
+
+  // Log message to database
+  async logMessage(shopDomain, customerPhone, messageBody, messageSid, direction = 'outbound', errorMessage = null) {
+    try {
+      const query = `
+        INSERT INTO messages (
+          shop_domain, customer_phone, message_type, message_body,
+          twilio_sid, direction, error_message, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `;
+
+      const { db } = require('../database');
+      db.run(query, [
+        shopDomain,
+        customerPhone,
+        'whatsapp',
+        messageBody,
+        messageSid,
+        direction,
+        errorMessage
+      ], function(err) {
+        if (err) {
+          console.error('Error logging message to database:', err);
+        } else {
+          console.log(`📝 Message logged to database (ID: ${this.lastID})`);
+        }
+      });
+    } catch (error) {
+      console.error('Error in logMessage:', error);
+    }
   }
 }
 

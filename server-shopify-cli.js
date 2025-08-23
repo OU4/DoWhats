@@ -291,6 +291,54 @@ app.get('/app', async (req, res) => {
   }
 });
 
+// ✅ CREATE FLOW PAGE ROUTE  
+app.get('/create-flow.html', async (req, res) => {
+  const shop = req.shop; // From validated session token
+  const sessionToken = req.sessionToken;
+  
+  if (!shop || !sessionToken) {
+    console.log('❌ No session token provided for:', req.path);
+    console.log('🔍 Available headers:', Object.keys(req.headers));
+    console.log('🔍 Available query params:', Object.keys(req.query));
+    console.log('🔍 Authorization header:', req.headers.authorization);
+    console.log('🔍 id_token query:', req.query.id_token);
+    return res.status(401).json({ error: 'No session token provided' });
+  }
+
+  try {
+    // Get access token from database
+    const shopData = await DatabaseQueries.getShop(shop);
+    if (!shopData?.access_token) {
+      console.error('❌ Shop not found or no access token:', shop);
+      return res.status(401).json({ error: 'Shop not authenticated' });
+    }
+
+    const accessToken = shopData.access_token;
+    
+    // Create Shopify session object
+    const { Session } = require('@shopify/shopify-api');
+    const session = new Session({
+      id: `${shop}_session`,
+      shop: shop,
+      state: '',
+      isOnline: false,
+      accessToken: accessToken,
+      scope: process.env.SHOPIFY_SCOPES || 'read_orders,write_orders,read_customers,write_customers'
+    });
+    
+    res.locals.shopify = { session };
+    
+    console.log('✅ Serving create flow page for shop:', shop);
+    
+    // Serve the create flow page
+    res.sendFile(path.join(__dirname, 'public', 'create-flow.html'));
+    
+  } catch (error) {
+    console.error('❌ Error in create flow route:', error);
+    return res.status(500).json({ error: 'Failed to load create flow page' });
+  }
+});
+
 // Helper function to ensure shop exists in database before processing webhooks
 async function ensureShopExists(shopDomain) {
   try {
@@ -364,7 +412,7 @@ app.post('/webhooks', async (req, res) => {
           customer_email: webhookData.customer?.email,
           customer_phone: webhookData.customer?.phone,
           customer_name: `${webhookData.customer?.first_name || ''} ${webhookData.customer?.last_name || ''}`.trim(),
-          total_price: parseFloat(webhookData.current_total_price || webhookData.total_price),
+          total_price: parseFloat(webhookData.current_total_price || webhookData.total_price || '0.00').toFixed(2),
           currency: webhookData.currency,
           financial_status: webhookData.financial_status,
           fulfillment_status: webhookData.fulfillment_status,
@@ -382,7 +430,7 @@ app.post('/webhooks', async (req, res) => {
               customer_name: webhookData.customer.first_name || 'Customer',
               order_number: webhookData.name,
               currency: webhookData.currency || 'USD',
-              total_price: webhookData.current_total_price || webhookData.total_price,
+              total_price: parseFloat(webhookData.current_total_price || webhookData.total_price || '0.00').toFixed(2),
               items: webhookData.line_items?.map(item => ({
                 name: item.name,
                 quantity: item.quantity,
@@ -437,7 +485,7 @@ app.post('/webhooks', async (req, res) => {
             customer_email: webhookData.email,
             customer_phone: webhookData.phone,
             customer_name: webhookData.billing_address?.first_name,
-            cart_value: parseFloat(webhookData.total_price || 0),
+            cart_value: parseFloat(webhookData.current_total_price || webhookData.total_price || '0.00'),
             currency: webhookData.currency,
             items_count: webhookData.line_items?.length || 0,
             line_items: webhookData.line_items,
@@ -722,7 +770,7 @@ app.post('/webhooks/checkout-created', async (req, res) => {
         customer_email: checkout.email,
         customer_phone: checkout.phone,
         customer_name: checkout.billing_address?.first_name,
-        cart_value: parseFloat(checkout.total_price || 0),
+        cart_value: parseFloat(checkout.current_total_price || checkout.total_price || '0.00'),
         currency: checkout.currency,
         items_count: checkout.line_items?.length || 0,
         line_items: checkout.line_items,
@@ -845,6 +893,34 @@ app.post('/whatsapp/webhook', async (req, res) => {
   const messageBody = Body.toLowerCase().trim();
   
   try {
+    // Get shop domain from customer phone number
+    let shopDomain = null;
+    let shopData = null;
+    
+    try {
+      // This gets the most recently interacted shop for the customer
+      shopData = await DatabaseQueries.getShopByCustomerPhone(phoneNumber);
+      if (shopData) {
+        shopDomain = shopData.shop_domain;
+        console.log('🏪 Found shop for customer:', shopDomain);
+      } else {
+        console.log('⚠️ No shop found for customer phone:', phoneNumber);
+        // Use a default shop domain as fallback (for testing/demo purposes)
+        // In production, you might want to handle this differently
+        shopDomain = 'dowhatss1.myshopify.com';
+        
+        // Note: For multi-shop scenarios where a customer might belong to multiple shops,
+        // you could use DatabaseQueries.getAllShopsForCustomerPhone(phoneNumber) 
+        // and implement logic to:
+        // 1. Ask the customer which shop they're inquiring about
+        // 2. Parse the message for shop-specific keywords
+        // 3. Use context from previous messages
+      }
+    } catch (error) {
+      console.error('❌ Error getting shop for customer:', error);
+      shopDomain = 'dowhatss1.myshopify.com'; // Fallback
+    }
+    
     let responseMessage = '';
     
     // Auto-response logic
@@ -865,8 +941,12 @@ app.post('/whatsapp/webhook', async (req, res) => {
     else if (messageBody === 'stop' || messageBody === 'unsubscribe') {
       // Update customer opt-out status in database
       try {
-        await DatabaseQueries.updateCustomerOptOut('dowhatss1.myshopify.com', phoneNumber);
-        responseMessage = `You've been unsubscribed from WhatsApp notifications. Reply START anytime to resubscribe.`;
+        if (shopDomain) {
+          await DatabaseQueries.updateCustomerOptOut(shopDomain, phoneNumber);
+          responseMessage = `You've been unsubscribed from WhatsApp notifications. Reply START anytime to resubscribe.`;
+        } else {
+          responseMessage = `Unable to process unsubscribe request. Please try again.`;
+        }
       } catch (error) {
         responseMessage = `Unable to process unsubscribe request. Please try again.`;
       }
@@ -887,18 +967,24 @@ app.post('/whatsapp/webhook', async (req, res) => {
       console.log('✅ Auto-reply sent');
     }
     
-    // Save incoming message to database
-    try {
-      await DatabaseQueries.createMessage(
-        'dowhatss1.myshopify.com', // Default shop - in production, determine from customer
-        phoneNumber,
-        Body,
-        'inbound',
-        null,
-        MessageSid
-      );
-    } catch (error) {
-      console.warn('⚠️ Failed to save incoming message:', error.message);
+    // Save incoming message to database and update last interaction
+    if (shopDomain) {
+      try {
+        await DatabaseQueries.createMessage(
+          shopDomain,
+          phoneNumber,
+          Body,
+          'inbound',
+          null,
+          MessageSid
+        );
+        console.log('💾 Incoming message saved for shop:', shopDomain);
+        
+        // Update customer's last interaction time
+        await DatabaseQueries.updateCustomerLastInteraction(shopDomain, phoneNumber);
+      } catch (error) {
+        console.warn('⚠️ Failed to save incoming message:', error.message);
+      }
     }
     
   } catch (error) {
@@ -1113,6 +1199,116 @@ app.get('/api/whatsapp-history/:phone', async (req, res) => {
     res.json({ success: true, messages });
   } catch (error) {
     console.error('Error fetching WhatsApp history:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== AUTOMATION SETTINGS API ==========
+
+// Get automation settings
+app.get('/api/automation-settings', async (req, res) => {
+  const shop = req.shop;
+  
+  try {
+    const settings = await DatabaseQueries.getAutomationSettings(shop);
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error('Error fetching automation settings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Save automation settings
+app.post('/api/automation-settings', async (req, res) => {
+  const shop = req.shop;
+  const settings = req.body;
+  
+  try {
+    await DatabaseQueries.saveAutomationSettings(shop, settings);
+    res.json({ success: true, message: 'Settings saved successfully' });
+  } catch (error) {
+    console.error('Error saving automation settings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ========== WHATSAPP FLOWS API ==========
+
+// Get all flows for shop
+app.get('/api/whatsapp-flows', async (req, res) => {
+  const shop = req.shop;
+  
+  try {
+    const flows = await DatabaseQueries.getWhatsAppFlows(shop);
+    res.json({ success: true, flows });
+  } catch (error) {
+    console.error('Error fetching WhatsApp flows:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create new WhatsApp flow
+app.post('/api/whatsapp-flows', async (req, res) => {
+  const shop = req.shop;
+  const flowData = req.body;
+  
+  try {
+    const result = await DatabaseQueries.createWhatsAppFlow(shop, flowData);
+    res.json({ success: true, flowId: result.id, message: 'Flow created successfully' });
+  } catch (error) {
+    console.error('Error creating WhatsApp flow:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update existing WhatsApp flow
+app.put('/api/whatsapp-flows/:id', async (req, res) => {
+  const shop = req.shop;
+  const flowId = req.params.id;
+  const flowData = req.body;
+  
+  try {
+    const result = await DatabaseQueries.updateWhatsAppFlow(flowId, shop, flowData);
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Flow not found' });
+    }
+    res.json({ success: true, message: 'Flow updated successfully' });
+  } catch (error) {
+    console.error('Error updating WhatsApp flow:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Toggle flow active status
+app.patch('/api/whatsapp-flows/:id/toggle', async (req, res) => {
+  const shop = req.shop;
+  const flowId = req.params.id;
+  
+  try {
+    const result = await DatabaseQueries.toggleWhatsAppFlow(flowId, shop);
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Flow not found' });
+    }
+    res.json({ success: true, message: 'Flow status updated successfully' });
+  } catch (error) {
+    console.error('Error toggling WhatsApp flow:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete WhatsApp flow
+app.delete('/api/whatsapp-flows/:id', async (req, res) => {
+  const shop = req.shop;
+  const flowId = req.params.id;
+  
+  try {
+    const result = await DatabaseQueries.deleteWhatsAppFlow(flowId, shop);
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Flow not found' });
+    }
+    res.json({ success: true, message: 'Flow deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting WhatsApp flow:', error);
     res.status(500).json({ error: error.message });
   }
 });

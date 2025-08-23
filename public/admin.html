@@ -379,12 +379,17 @@
             </div>
             
             <div id="automation" class="tab-content active">
-                <h2 style="margin-bottom: 20px;">Automation Settings</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <h2 style="margin: 0;">Automation Settings</h2>
+                    <button class="btn btn-primary" onclick="createFlow()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 10px 20px; font-size: 14px;">
+                        + Create WhatsApp Flow
+                    </button>
+                </div>
                 
                 <div class="form-group">
                     <label>
                         <input type="checkbox" id="abandonedCart" checked>
-                        Enable Abandoned Cart Recovery
+                        Abandoned Cart Recovery
                     </label>
                     <p style="color: #666; font-size: 14px; margin-top: 5px;">
                         Send WhatsApp messages to customers who abandon their carts
@@ -392,14 +397,9 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>Delay Before Sending (hours)</label>
-                    <input type="number" value="2" min="1" max="24">
-                </div>
-                
-                <div class="form-group">
                     <label>
                         <input type="checkbox" id="orderConfirmation" checked>
-                        Send Order Confirmations
+                        Order Confirmation Messages
                     </label>
                     <p style="color: #666; font-size: 14px; margin-top: 5px;">
                         Automatically send order confirmations via WhatsApp
@@ -409,24 +409,62 @@
                 <div class="form-group">
                     <label>
                         <input type="checkbox" id="shippingUpdates" checked>
-                        Send Shipping Updates
+                        Shipping Updates
                     </label>
                     <p style="color: #666; font-size: 14px; margin-top: 5px;">
-                        Notify customers when their order ships
+                        Notify customers when their order ships and is delivered
                     </p>
                 </div>
                 
                 <div class="form-group">
                     <label>
-                        <input type="checkbox" id="reviewRequests">
-                        Request Reviews After Delivery
+                        <input type="checkbox" id="welcomeMessage" checked>
+                        Welcome Messages
+                    </label>
+                    <p style="color: #666; font-size: 14px; margin-top: 5px;">
+                        Send welcome messages to new customers
+                    </p>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="reviewRequest">
+                        Review Requests
                     </label>
                     <p style="color: #666; font-size: 14px; margin-top: 5px;">
                         Ask customers to leave reviews 3 days after delivery
                     </p>
                 </div>
                 
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="birthdayMessages">
+                        Birthday Messages
+                    </label>
+                    <p style="color: #666; font-size: 14px; margin-top: 5px;">
+                        Send birthday wishes to customers
+                    </p>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="backInStock">
+                        Back in Stock Notifications
+                    </label>
+                    <p style="color: #666; font-size: 14px; margin-top: 5px;">
+                        Notify customers when out-of-stock items are available
+                    </p>
+                </div>
+                
                 <button class="btn btn-primary" onclick="saveAutomation()">Save Automation Settings</button>
+                
+                <!-- Existing Flows Section -->
+                <div id="existing-flows" style="margin-top: 40px;">
+                    <h3 style="margin-bottom: 20px;">Your WhatsApp Flows</h3>
+                    <div id="flows-container">
+                        <p style="color: #666; text-align: center; padding: 20px;">Loading flows...</p>
+                    </div>
+                </div>
             </div>
             
             <div id="templates" class="tab-content">
@@ -582,31 +620,209 @@ function sendWhatsAppTest() {
         }
         
         // Save automation settings
-        function saveAutomation() {
+        async function saveAutomation() {
             const settings = {
                 abandonedCart: document.getElementById('abandonedCart').checked,
                 orderConfirmation: document.getElementById('orderConfirmation').checked,
                 shippingUpdates: document.getElementById('shippingUpdates').checked,
-                reviewRequests: document.getElementById('reviewRequests').checked
+                welcomeMessage: document.getElementById('welcomeMessage').checked,
+                reviewRequest: document.getElementById('reviewRequest').checked,
+                birthdayMessages: document.getElementById('birthdayMessages').checked,
+                backInStock: document.getElementById('backInStock').checked
             };
             
-            console.log('Saving settings:', settings);
-            alert('Automation settings saved successfully!');
-            
-            // In production, save to backend:
-            /*
-            fetch('/api/save-automation', {
-                method: 'POST',
-                headers: {
+            try {
+                const sessionToken = getSessionToken();
+                const headers = {
                     'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(settings)
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert('Settings saved!');
-            });
-            */
+                };
+                
+                if (sessionToken) {
+                    headers['Authorization'] = `Bearer ${sessionToken}`;
+                }
+
+                const response = await fetch('/api/automation-settings', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(settings)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Automation settings saved successfully!');
+                } else {
+                    alert('❌ Error saving settings: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error saving settings. Please try again.');
+            }
+        }
+
+        // Load automation settings on page load
+        async function loadAutomationSettings() {
+            try {
+                const sessionToken = getSessionToken();
+                const headers = {};
+                
+                if (sessionToken) {
+                    headers['Authorization'] = `Bearer ${sessionToken}`;
+                }
+
+                const response = await fetch('/api/automation-settings', { headers });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const settings = result.settings;
+                    document.getElementById('abandonedCart').checked = settings.abandonedCart;
+                    document.getElementById('orderConfirmation').checked = settings.orderConfirmation;
+                    document.getElementById('shippingUpdates').checked = settings.shippingUpdates;
+                    document.getElementById('welcomeMessage').checked = settings.welcomeMessage;
+                    document.getElementById('reviewRequest').checked = settings.reviewRequest;
+                    document.getElementById('birthdayMessages').checked = settings.birthdayMessages;
+                    document.getElementById('backInStock').checked = settings.backInStock;
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        // Navigate to Create Flow page
+        function createFlow() {
+            // Pass session token in URL
+            const currentUrl = new URL(window.location);
+            const createFlowUrl = `/create-flow.html${currentUrl.search}`;
+            window.location.href = createFlowUrl;
+        }
+
+        // Load existing flows
+        async function loadExistingFlows() {
+            try {
+                const sessionToken = getSessionToken();
+                const headers = {};
+                
+                if (sessionToken) {
+                    headers['Authorization'] = `Bearer ${sessionToken}`;
+                }
+
+                const response = await fetch('/api/whatsapp-flows', { headers });
+                const result = await response.json();
+                
+                const container = document.getElementById('flows-container');
+                
+                if (result.success && result.flows.length > 0) {
+                    container.innerHTML = result.flows.map(flow => `
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <h4 style="margin: 0; color: #1e293b;">${flow.flow_name}</h4>
+                                <span style="background: ${flow.is_active ? '#10b981' : '#6b7280'}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                                    ${flow.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                            </div>
+                            <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+                                <span style="color: #64748b; font-size: 14px;">Type: ${flow.flow_type.replace('_', ' ').toUpperCase()}</span>
+                                <span style="color: #64748b; font-size: 14px;">Language: ${flow.language.toUpperCase()}</span>
+                                <span style="color: #64748b; font-size: 14px;">Delay: ${flow.trigger_delay_minutes} min</span>
+                            </div>
+                            <p style="color: #64748b; font-size: 13px; margin: 8px 0; line-height: 1.4;">${flow.message_content.substring(0, 100)}...</p>
+                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                <button onclick="editFlow(${flow.id})" style="padding: 6px 12px; background: #4f46e5; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">Edit</button>
+                                <button onclick="toggleFlow(${flow.id}, ${flow.is_active})" style="padding: 6px 12px; background: ${flow.is_active ? '#ef4444' : '#10b981'}; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                    ${flow.is_active ? 'Deactivate' : 'Activate'}
+                                </button>
+                                <button onclick="deleteFlow(${flow.id}, '${flow.flow_name.replace(/'/g, "\\'")}')" style="padding: 6px 12px; background: #dc2626; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">Delete</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #64748b;">
+                            <p style="margin-bottom: 16px;">No WhatsApp flows created yet</p>
+                            <button onclick="createFlow()" style="padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                                Create Your First Flow
+                            </button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading flows:', error);
+                document.getElementById('flows-container').innerHTML = `
+                    <p style="color: #ef4444; text-align: center; padding: 20px;">Error loading flows</p>
+                `;
+            }
+        }
+
+        // Edit flow function
+        function editFlow(flowId) {
+            // Pass session token in URL
+            const currentUrl = new URL(window.location);
+            const searchParams = currentUrl.search;
+            const separator = searchParams ? '&' : '?';
+            const editFlowUrl = `/create-flow.html?edit=${flowId}${searchParams ? separator + searchParams.substring(1) : searchParams}`;
+            window.location.href = editFlowUrl;
+        }
+
+        // Toggle flow active status
+        async function toggleFlow(flowId, currentStatus) {
+            try {
+                const sessionToken = getSessionToken();
+                const headers = {};
+                
+                if (sessionToken) {
+                    headers['Authorization'] = `Bearer ${sessionToken}`;
+                }
+
+                const response = await fetch(`/api/whatsapp-flows/${flowId}/toggle`, {
+                    method: 'PATCH',
+                    headers: headers
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`✅ Flow ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
+                    loadExistingFlows(); // Reload the flows list
+                } else {
+                    alert('❌ Error updating flow: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error updating flow. Please try again.');
+            }
+        }
+
+        // Delete flow
+        async function deleteFlow(flowId, flowName) {
+            if (!confirm(`Are you sure you want to delete the flow "${flowName}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const sessionToken = getSessionToken();
+                const headers = {};
+                
+                if (sessionToken) {
+                    headers['Authorization'] = `Bearer ${sessionToken}`;
+                }
+
+                const response = await fetch(`/api/whatsapp-flows/${flowId}`, {
+                    method: 'DELETE',
+                    headers: headers
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Flow deleted successfully!');
+                    loadExistingFlows(); // Reload the flows list
+                } else {
+                    alert('❌ Error deleting flow: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error deleting flow. Please try again.');
+            }
         }
         
         // Add new template
@@ -714,6 +930,14 @@ function sendWhatsAppTest() {
                     // Keep mock data as fallback
                 });
         }
+
+        // Initialize page when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load initial data
+            loadAutomationSettings();
+            loadExistingFlows();
+            loadStats();
+        });
     </script>
 </body>
 </html>

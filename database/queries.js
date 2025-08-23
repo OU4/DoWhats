@@ -4,6 +4,199 @@ const { db } = require('./index');
 class DatabaseQueries {
   // ========== SHOP OPERATIONS ==========
 
+  // ========== AUTOMATION SETTINGS ==========
+  
+  static saveAutomationSettings(shop_domain, settings) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        INSERT OR REPLACE INTO automation_settings (
+          shop_domain, abandoned_cart_enabled, order_confirmation_enabled,
+          shipping_updates_enabled, welcome_message_enabled, review_request_enabled,
+          birthday_messages_enabled, back_in_stock_enabled, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `;
+      
+      db.run(query, [
+        shop_domain,
+        settings.abandonedCart ? 1 : 0,
+        settings.orderConfirmation ? 1 : 0,
+        settings.shippingUpdates ? 1 : 0,
+        settings.welcomeMessage ? 1 : 0,
+        settings.reviewRequest ? 1 : 0,
+        settings.birthdayMessages ? 1 : 0,
+        settings.backInStock ? 1 : 0
+      ], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ success: true, id: this.lastID });
+        }
+      });
+    });
+  }
+
+  static getAutomationSettings(shop_domain) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT * FROM automation_settings WHERE shop_domain = ?
+      `;
+      
+      db.get(query, [shop_domain], (err, row) => {
+        if (err) {
+          reject(err);
+        } else {
+          // Return default settings if none exist
+          const settings = row ? {
+            abandonedCart: Boolean(row.abandoned_cart_enabled),
+            orderConfirmation: Boolean(row.order_confirmation_enabled),
+            shippingUpdates: Boolean(row.shipping_updates_enabled),
+            welcomeMessage: Boolean(row.welcome_message_enabled),
+            reviewRequest: Boolean(row.review_request_enabled),
+            birthdayMessages: Boolean(row.birthday_messages_enabled),
+            backInStock: Boolean(row.back_in_stock_enabled)
+          } : {
+            abandonedCart: true,
+            orderConfirmation: true,
+            shippingUpdates: true,
+            welcomeMessage: true,
+            reviewRequest: false,
+            birthdayMessages: false,
+            backInStock: false
+          };
+          resolve(settings);
+        }
+      });
+    });
+  }
+
+  // ========== WHATSAPP FLOWS ==========
+  
+  static createWhatsAppFlow(shop_domain, flowData) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        INSERT INTO whatsapp_flows (
+          shop_domain, flow_name, flow_type, flow_example, language,
+          trigger_delay_minutes, message_content, footer_text, discount_code,
+          image_type, image_url, button_text, quick_replies
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      
+      db.run(query, [
+        shop_domain,
+        flowData.flowName,
+        flowData.flowType,
+        flowData.flowExample,
+        flowData.language,
+        flowData.triggerDelayMinutes,
+        flowData.messageContent,
+        flowData.footerText,
+        flowData.discountCode,
+        flowData.imageType,
+        flowData.imageUrl,
+        flowData.buttonText,
+        JSON.stringify(flowData.quickReplies || [])
+      ], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ success: true, id: this.lastID });
+        }
+      });
+    });
+  }
+
+  static getWhatsAppFlows(shop_domain) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT * FROM whatsapp_flows WHERE shop_domain = ? AND is_active = 1
+        ORDER BY created_at DESC
+      `;
+      
+      db.all(query, [shop_domain], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          const flows = rows.map(row => ({
+            ...row,
+            quick_replies: JSON.parse(row.quick_replies || '[]')
+          }));
+          resolve(flows);
+        }
+      });
+    });
+  }
+
+  static updateWhatsAppFlow(flowId, shop_domain, flowData) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        UPDATE whatsapp_flows SET
+          flow_name = ?, flow_type = ?, flow_example = ?, language = ?,
+          trigger_delay_minutes = ?, message_content = ?, footer_text = ?,
+          discount_code = ?, image_type = ?, image_url = ?, button_text = ?,
+          quick_replies = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND shop_domain = ?
+      `;
+      
+      db.run(query, [
+        flowData.flowName,
+        flowData.flowType,
+        flowData.flowExample,
+        flowData.language,
+        flowData.triggerDelayMinutes,
+        flowData.messageContent,
+        flowData.footerText,
+        flowData.discountCode,
+        flowData.imageType,
+        flowData.imageUrl,
+        flowData.buttonText,
+        JSON.stringify(flowData.quickReplies || []),
+        flowId,
+        shop_domain
+      ], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
+  }
+
+  static toggleWhatsAppFlow(flowId, shop_domain) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        UPDATE whatsapp_flows SET
+          is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND shop_domain = ?
+      `;
+      
+      db.run(query, [flowId, shop_domain], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
+  }
+
+  static deleteWhatsAppFlow(flowId, shop_domain) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        DELETE FROM whatsapp_flows WHERE id = ? AND shop_domain = ?
+      `;
+      
+      db.run(query, [flowId, shop_domain], function(err) {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
+  }
+
   // Additional database queries needed
 
 static saveOrder(orderData) {
@@ -665,6 +858,21 @@ static disableCustomer(customerId) {
     });
   }
 
+  static updateCustomerLastInteraction(shopDomain, customerPhone) {
+    return new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE customers 
+         SET last_interaction = CURRENT_TIMESTAMP 
+         WHERE shop_domain = ? AND customer_phone = ?`,
+        [shopDomain, customerPhone],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+  }
+
   static getCustomerSegments(shopDomain) {
     return new Promise((resolve, reject) => {
       const query = `
@@ -1131,6 +1339,45 @@ static disableCustomer(customerId) {
       db.get(query, [shopDomain], (err, row) => {
         if (err) reject(err);
         else resolve(row?.count || 0);
+      });
+    });
+  }
+
+  static getShopByCustomerPhone(customerPhone) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT DISTINCT c.shop_domain, s.* 
+        FROM customers c
+        JOIN shops s ON c.shop_domain = s.shop_domain
+        WHERE c.customer_phone = ? 
+        AND c.opted_in = 1
+        AND s.is_active = 1
+        ORDER BY c.last_interaction DESC
+        LIMIT 1
+      `;
+      
+      db.get(query, [customerPhone], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  }
+
+  static getAllShopsForCustomerPhone(customerPhone) {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT DISTINCT c.shop_domain, s.shop_name, c.last_interaction 
+        FROM customers c
+        JOIN shops s ON c.shop_domain = s.shop_domain
+        WHERE c.customer_phone = ? 
+        AND c.opted_in = 1
+        AND s.is_active = 1
+        ORDER BY c.last_interaction DESC
+      `;
+      
+      db.all(query, [customerPhone], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
       });
     });
   }
