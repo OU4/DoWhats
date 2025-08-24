@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Widget Settings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .header h1 svg {
+            width: 36px;
+            height: 36px;
+            fill: #25D366;
+        }
+        
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        
+        .settings-section {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .settings-section h2 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #25D366;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+        
+        .color-picker-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .color-picker-group input[type="color"] {
+            width: 60px;
+            height: 40px;
+            padding: 4px;
+            cursor: pointer;
+        }
+        
+        .color-picker-group input[type="text"] {
+            flex: 1;
+        }
+        
+        .position-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .position-option {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .position-option:hover {
+            border-color: #25D366;
+            background-color: #f0f9f4;
+        }
+        
+        .position-option.selected {
+            border-color: #25D366;
+            background-color: #e8f5e9;
+            font-weight: 500;
+        }
+        
+        .business-hours-grid {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .business-hours-row {
+            display: grid;
+            grid-template-columns: 100px 1fr 1fr auto;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .business-hours-row label {
+            margin: 0;
+            font-weight: 500;
+        }
+        
+        .business-hours-row input[type="time"] {
+            padding: 6px 10px;
+        }
+        
+        .trigger-options {
+            display: grid;
+            gap: 16px;
+            padding: 16px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+        
+        .save-button {
+            background-color: #25D366;
+            color: white;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: block;
+            margin: 24px auto 0;
+        }
+        
+        .save-button:hover {
+            background-color: #20b858;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+        }
+        
+        .preview-section {
+            position: sticky;
+            top: 20px;
+        }
+        
+        .preview-container {
+            background-color: #f0f0f0;
+            border-radius: 12px;
+            padding: 40px;
+            min-height: 400px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .preview-title {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .preview-section {
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                </svg>
+                WhatsApp Widget Settings
+            </h1>
+        </div>
+        
+        <div class="success-message" id="successMessage">Settings saved successfully!</div>
+        <div class="error-message" id="errorMessage">Error saving settings. Please try again.</div>
+        
+        <form id="whatsappSettingsForm">
+            <div class="settings-grid">
+                <div>
+                    <div class="settings-section">
+                        <h2>Basic Configuration</h2>
+                        
+                        <div class="form-group">
+                            <label for="phoneNumber">WhatsApp Phone Number</label>
+                            <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="+1234567890" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="defaultMessage">Default Message</label>
+                            <textarea id="defaultMessage" name="defaultMessage" placeholder="Hello! I'm interested in your products."></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="buttonText">Button Text</label>
+                            <input type="text" id="buttonText" name="buttonText" placeholder="Chat with us">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="language">Language</label>
+                            <select id="language" name="language">
+                                <option value="en">English</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h2>Appearance</h2>
+                        
+                        <div class="form-group">
+                            <label>Button Position</label>
+                            <div class="position-selector">
+                                <div class="position-option" data-position="top-left">Top Left</div>
+                                <div class="position-option" data-position="top-right">Top Right</div>
+                                <div class="position-option" data-position="bottom-left">Bottom Left</div>
+                                <div class="position-option selected" data-position="bottom-right">Bottom Right</div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="backgroundColor">Button Color</label>
+                            <div class="color-picker-group">
+                                <input type="color" id="backgroundColorPicker" value="#25D366">
+                                <input type="text" id="backgroundColor" name="backgroundColor" value="#25D366">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="textColor">Text Color</label>
+                            <div class="color-picker-group">
+                                <input type="color" id="textColorPicker" value="#ffffff">
+                                <input type="text" id="textColor" name="textColor" value="#ffffff">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="customCSS">Custom CSS (Optional)</label>
+                            <textarea id="customCSS" name="customCSS" placeholder=".whatsapp-button { /* Your custom styles */ }"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="settings-section">
+                        <h2>Business Hours</h2>
+                        
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="businessHoursEnabled" name="businessHoursEnabled">
+                                <label for="businessHoursEnabled">Enable Business Hours</label>
+                            </div>
+                        </div>
+                        
+                        <div class="business-hours-grid" id="businessHoursGrid" style="display: none;">
+                            <div class="business-hours-row">
+                                <label>Monday</label>
+                                <input type="time" name="monday_start" value="09:00">
+                                <input type="time" name="monday_end" value="17:00">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" name="monday_closed">
+                                    <label>Closed</label>
+                                </div>
+                            </div>
+                            <div class="business-hours-row">
+                                <label>Tuesday</label>
+                                <input type="time" name="tuesday_start" value="09:00">
+                                <input type="time" name="tuesday_end" value="17:00">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" name="tuesday_closed">
+                                    <label>Closed</label>
+                                </div>
+                            </div>
+                            <div class="business-hours-row">
+                                <label>Wednesday</label>
+                                <input type="time" name="wednesday_start" value="09:00">
+                                <input type="time" name="wednesday_end" value="17:00">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" name="wednesday_closed">
+                                    <label>Closed</label>
+                                </div>
+                            </div>
+                            <div class="business-hours-row">
+                                <label>Thursday</label>
+                                <input type="time" name="thursday_start" value="09:00">
+                                <input type="time" name="thursday_end" value="17:00">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" name="thursday_closed">
+                                    <label>Closed</label>
+                                </div>
+                            </div>
+                            <div class="business-hours-row">
+                                <label>Friday</label>
+                                <input type="time" name="friday_start" value="09:00">
+                                <input type="time" name="friday_end" value="17:00">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" name="friday_closed">
+                                    <label>Closed</label>
+                                </div>
+                            </div>
+                            <div class="business-hours-row">
+                                <label>Saturday</label>
+                                <input type="time" name="saturday_start" value="10:00">
+                                <input type="time" name="saturday_end" value="14:00">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" name="saturday_closed">
+                                    <label>Closed</label>
+                                </div>
+                            </div>
+                            <div class="business-hours-row">
+                                <label>Sunday</label>
+                                <input type="time" name="sunday_start" value="10:00">
+                                <input type="time" name="sunday_end" value="14:00">
+                                <div class="checkbox-group">
+                                    <input type="checkbox" name="sunday_closed" checked>
+                                    <label>Closed</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h2>Smart Popup Triggers</h2>
+                        
+                        <div class="form-group">
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="popupTriggersEnabled" name="popupTriggersEnabled">
+                                <label for="popupTriggersEnabled">Enable Smart Popups</label>
+                            </div>
+                        </div>
+                        
+                        <div class="trigger-options" id="triggerOptions" style="display: none;">
+                            <div class="form-group">
+                                <label for="popupDelay">Show popup after (seconds)</label>
+                                <input type="number" id="popupDelay" name="popupDelay" min="0" value="5">
+                            </div>
+                            
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="exitIntent" name="exitIntent">
+                                <label for="exitIntent">Show on exit intent</label>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="scrollPercentage">Show after scroll percentage</label>
+                                <input type="number" id="scrollPercentage" name="scrollPercentage" min="0" max="100" value="50">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="popupMessage">Popup Message</label>
+                                <textarea id="popupMessage" name="popupMessage" placeholder="Need help? Chat with us on WhatsApp!"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section preview-section">
+                        <h2>Live Preview</h2>
+                        <div class="preview-container">
+                            <span class="preview-title">Preview</span>
+                            <div id="widgetPreview"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button type="submit" class="save-button">Save Settings</button>
+        </form>
+    </div>
+    
+    <script src="whatsapp-widget.js"></script>
+    <script>
+        let previewWidget = null;
+        
+        // Position selector
+        document.querySelectorAll('.position-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.position-option').forEach(opt => opt.classList.remove('selected'));
+                this.classList.add('selected');
+                updatePreview();
+            });
+        });
+        
+        // Color pickers
+        document.getElementById('backgroundColorPicker').addEventListener('input', function() {
+            document.getElementById('backgroundColor').value = this.value;
+            updatePreview();
+        });
+        
+        document.getElementById('textColorPicker').addEventListener('input', function() {
+            document.getElementById('textColor').value = this.value;
+            updatePreview();
+        });
+        
+        document.getElementById('backgroundColor').addEventListener('input', function() {
+            document.getElementById('backgroundColorPicker').value = this.value;
+            updatePreview();
+        });
+        
+        document.getElementById('textColor').addEventListener('input', function() {
+            document.getElementById('textColorPicker').value = this.value;
+            updatePreview();
+        });
+        
+        // Toggle business hours
+        document.getElementById('businessHoursEnabled').addEventListener('change', function() {
+            document.getElementById('businessHoursGrid').style.display = this.checked ? 'grid' : 'none';
+            updatePreview();
+        });
+        
+        // Toggle popup triggers
+        document.getElementById('popupTriggersEnabled').addEventListener('change', function() {
+            document.getElementById('triggerOptions').style.display = this.checked ? 'grid' : 'none';
+            updatePreview();
+        });
+        
+        // Update preview on any input change
+        document.querySelectorAll('input, select, textarea').forEach(input => {
+            input.addEventListener('input', updatePreview);
+            input.addEventListener('change', updatePreview);
+        });
+        
+        function updatePreview() {
+            const config = getFormConfig();
+            
+            if (previewWidget) {
+                previewWidget.destroy();
+            }
+            
+            // Create preview container
+            const previewContainer = document.getElementById('widgetPreview');
+            previewContainer.innerHTML = '';
+            
+            // Override position for preview
+            config.position = 'bottom-right';
+            
+            // Create widget in preview container
+            const tempContainer = document.createElement('div');
+            tempContainer.style.position = 'absolute';
+            tempContainer.style.bottom = '20px';
+            tempContainer.style.right = '20px';
+            previewContainer.appendChild(tempContainer);
+            
+            // Initialize preview widget
+            previewWidget = new WhatsAppWidget(config);
+            
+            // Move the widget to preview container
+            setTimeout(() => {
+                const widgetElement = document.querySelector('.whatsapp-widget-container');
+                if (widgetElement) {
+                    widgetElement.style.position = 'absolute';
+                    tempContainer.appendChild(widgetElement);
+                }
+            }, 100);
+        }
+        
+        function getFormConfig() {
+            const position = document.querySelector('.position-option.selected').dataset.position;
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const schedule = {};
+            
+            days.forEach(day => {
+                schedule[day] = {
+                    start: document.querySelector(`[name="${day}_start"]`).value,
+                    end: document.querySelector(`[name="${day}_end"]`).value,
+                    closed: document.querySelector(`[name="${day}_closed"]`).checked
+                };
+            });
+            
+            return {
+                phoneNumber: document.getElementById('phoneNumber').value,
+                defaultMessage: document.getElementById('defaultMessage').value,
+                buttonText: document.getElementById('buttonText').value,
+                language: document.getElementById('language').value,
+                position: position,
+                backgroundColor: document.getElementById('backgroundColor').value,
+                textColor: document.getElementById('textColor').value,
+                customCSS: document.getElementById('customCSS').value,
+                businessHours: {
+                    enabled: document.getElementById('businessHoursEnabled').checked,
+                    schedule: schedule
+                },
+                popupTriggers: {
+                    enabled: document.getElementById('popupTriggersEnabled').checked,
+                    delay: parseInt(document.getElementById('popupDelay').value) * 1000,
+                    exitIntent: document.getElementById('exitIntent').checked,
+                    scrollPercentage: parseInt(document.getElementById('scrollPercentage').value),
+                    message: document.getElementById('popupMessage').value
+                }
+            };
+        }
+        
+        // Form submission
+        document.getElementById('whatsappSettingsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const config = getFormConfig();
+            
+            try {
+                const response = await fetch('/api/whatsapp/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+                
+                if (response.ok) {
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('errorMessage').style.display = 'none';
+                    setTimeout(() => {
+                        document.getElementById('successMessage').style.display = 'none';
+                    }, 3000);
+                } else {
+                    throw new Error('Failed to save settings');
+                }
+            } catch (error) {
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('successMessage').style.display = 'none';
+                setTimeout(() => {
+                    document.getElementById('errorMessage').style.display = 'none';
+                }, 3000);
+            }
+        });
+        
+        // Load existing settings
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/whatsapp/settings');
+                if (response.ok) {
+                    const settings = await response.json();
+                    // Populate form with settings
+                    if (settings.phoneNumber) document.getElementById('phoneNumber').value = settings.phoneNumber;
+                    if (settings.defaultMessage) document.getElementById('defaultMessage').value = settings.defaultMessage;
+                    if (settings.buttonText) document.getElementById('buttonText').value = settings.buttonText;
+                    if (settings.language) document.getElementById('language').value = settings.language;
+                    if (settings.backgroundColor) {
+                        document.getElementById('backgroundColor').value = settings.backgroundColor;
+                        document.getElementById('backgroundColorPicker').value = settings.backgroundColor;
+                    }
+                    if (settings.textColor) {
+                        document.getElementById('textColor').value = settings.textColor;
+                        document.getElementById('textColorPicker').value = settings.textColor;
+                    }
+                    if (settings.customCSS) document.getElementById('customCSS').value = settings.customCSS;
+                    
+                    // Set position
+                    if (settings.position) {
+                        document.querySelectorAll('.position-option').forEach(opt => opt.classList.remove('selected'));
+                        document.querySelector(`[data-position="${settings.position}"]`).classList.add('selected');
+                    }
+                    
+                    // Set business hours
+                    if (settings.businessHours) {
+                        document.getElementById('businessHoursEnabled').checked = settings.businessHours.enabled;
+                        document.getElementById('businessHoursGrid').style.display = settings.businessHours.enabled ? 'grid' : 'none';
+                        
+                        if (settings.businessHours.schedule) {
+                            Object.keys(settings.businessHours.schedule).forEach(day => {
+                                const daySchedule = settings.businessHours.schedule[day];
+                                if (daySchedule.start) document.querySelector(`[name="${day}_start"]`).value = daySchedule.start;
+                                if (daySchedule.end) document.querySelector(`[name="${day}_end"]`).value = daySchedule.end;
+                                if (daySchedule.closed !== undefined) document.querySelector(`[name="${day}_closed"]`).checked = daySchedule.closed;
+                            });
+                        }
+                    }
+                    
+                    // Set popup triggers
+                    if (settings.popupTriggers) {
+                        document.getElementById('popupTriggersEnabled').checked = settings.popupTriggers.enabled;
+                        document.getElementById('triggerOptions').style.display = settings.popupTriggers.enabled ? 'grid' : 'none';
+                        
+                        if (settings.popupTriggers.delay) document.getElementById('popupDelay').value = settings.popupTriggers.delay / 1000;
+                        if (settings.popupTriggers.exitIntent !== undefined) document.getElementById('exitIntent').checked = settings.popupTriggers.exitIntent;
+                        if (settings.popupTriggers.scrollPercentage) document.getElementById('scrollPercentage').value = settings.popupTriggers.scrollPercentage;
+                        if (settings.popupTriggers.message) document.getElementById('popupMessage').value = settings.popupTriggers.message;
+                    }
+                    
+                    updatePreview();
+                }
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            }
+        }
+        
+        // Initialize
+        loadSettings();
+        updatePreview();
+    </script>
+</body>
+</html>

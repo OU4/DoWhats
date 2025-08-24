@@ -27,7 +27,7 @@ function initializeDatabase() {
     // Check if all required tables exist
     db.all(`
       SELECT name FROM sqlite_master 
-      WHERE type='table' AND name IN ('shops', 'automation_settings', 'whatsapp_flows')
+      WHERE type='table' AND name IN ('shops', 'automation_settings', 'whatsapp_flows', 'whatsapp_widget_settings', 'script_tags')
     `, (err, rows) => {
       if (err) {
         reject(err);
@@ -36,7 +36,7 @@ function initializeDatabase() {
       
       // Get list of existing tables
       const existingTables = rows.map(row => row.name);
-      const requiredTables = ['shops', 'automation_settings', 'whatsapp_flows'];
+      const requiredTables = ['shops', 'automation_settings', 'whatsapp_flows', 'whatsapp_widget_settings', 'script_tags'];
       const missingTables = requiredTables.filter(table => !existingTables.includes(table));
       
       // If all tables exist, skip initialization
@@ -387,6 +387,56 @@ function initializeDatabase() {
         )
       `, (err) => {
         if (err) console.error('Error creating whatsapp_flows table:', err);
+        
+      });
+
+      // 15. WHATSAPP WIDGET SETTINGS TABLE
+      db.run(`
+        CREATE TABLE IF NOT EXISTS whatsapp_widget_settings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          shop_domain TEXT UNIQUE NOT NULL,
+          phone_number TEXT NOT NULL,
+          default_message TEXT,
+          button_text TEXT DEFAULT 'Chat with us',
+          language TEXT DEFAULT 'en',
+          position TEXT DEFAULT 'bottom-right',
+          background_color TEXT DEFAULT '#25D366',
+          text_color TEXT DEFAULT '#ffffff',
+          custom_css TEXT,
+          business_hours_enabled BOOLEAN DEFAULT 0,
+          business_hours_schedule TEXT,
+          business_hours_timezone TEXT DEFAULT 'UTC',
+          closed_message TEXT,
+          popup_triggers_enabled BOOLEAN DEFAULT 0,
+          popup_delay INTEGER DEFAULT 5000,
+          popup_exit_intent BOOLEAN DEFAULT 0,
+          popup_scroll_percentage INTEGER DEFAULT 50,
+          popup_message TEXT,
+          translations TEXT,
+          is_active BOOLEAN DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (shop_domain) REFERENCES shops(shop_domain) ON DELETE CASCADE
+        )
+      `, (err) => {
+        if (err) console.error('Error creating whatsapp_widget_settings table:', err);
+        
+      });
+
+      // 16. SCRIPT TAGS TABLE - Track Shopify Script Tag installations
+      db.run(`
+        CREATE TABLE IF NOT EXISTS script_tags (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          shop_domain TEXT NOT NULL,
+          script_tag_id TEXT UNIQUE NOT NULL,
+          src TEXT NOT NULL,
+          is_active BOOLEAN DEFAULT 1,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (shop_domain) REFERENCES shops(shop_domain) ON DELETE CASCADE
+        )
+      `, (err) => {
+        if (err) console.error('Error creating script_tags table:', err);
         
       });
 

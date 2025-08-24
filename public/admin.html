@@ -1159,6 +1159,10 @@
                     <i class="ri-file-text-line"></i>
                     Templates
                 </button>
+                <button class="tab" onclick="switchTab('widget')">
+                    <i class="ri-whatsapp-line"></i>
+                    WhatsApp Widget
+                </button>
                 <button class="tab" onclick="switchTab('settings')">
                     <i class="ri-settings-line"></i>
                     Settings
@@ -1891,6 +1895,321 @@
                 </button>
             </div>
             
+            <!-- WhatsApp Widget Tab -->
+            <div id="widget" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <div>
+                        <h2 style="margin: 0;">WhatsApp Widget</h2>
+                        <p style="color: var(--text-secondary); margin-top: 4px;">Configure and install the WhatsApp chat button on your store</p>
+                    </div>
+                </div>
+                
+                <!-- Widget Configuration -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 30px;">
+                    <div style="background: var(--background); padding: 24px; border-radius: var(--radius);">
+                        <h3 style="margin: 0 0 20px 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="ri-settings-4-line"></i>
+                            Widget Settings
+                        </h3>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: block; margin-bottom: 6px; font-weight: 500;">WhatsApp Phone Number</label>
+                            <input type="tel" id="widgetPhone" placeholder="+1234567890" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        </div>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: block; margin-bottom: 6px; font-weight: 500;">Default Message</label>
+                            <textarea id="widgetMessage" placeholder="Hello! I'm interested in your products." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; min-height: 80px; resize: vertical;"></textarea>
+                        </div>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: block; margin-bottom: 6px; font-weight: 500;">Button Text</label>
+                            <input type="text" id="widgetButtonText" placeholder="Chat with us" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        </div>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: block; margin-bottom: 6px; font-weight: 500;">Position</label>
+                            <select id="widgetPosition" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                                <option value="bottom-right">Bottom Right</option>
+                                <option value="bottom-left">Bottom Left</option>
+                                <option value="top-right">Top Right</option>
+                                <option value="top-left">Top Left</option>
+                            </select>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 6px; font-weight: 500;">Button Color</label>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <input type="color" id="widgetBgColor" value="#25D366" style="width: 40px; height: 40px; border: none; border-radius: 4px; cursor: pointer;">
+                                    <input type="text" id="widgetBgColorText" value="#25D366" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 6px; font-weight: 500;">Text Color</label>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <input type="color" id="widgetTextColor" value="#ffffff" style="width: 40px; height: 40px; border: none; border-radius: 4px; cursor: pointer;">
+                                    <input type="text" id="widgetTextColorText" value="#ffffff" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--background); padding: 24px; border-radius: var(--radius);">
+                        <h3 style="margin: 0 0 20px 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="ri-time-line"></i>
+                            Business Hours
+                        </h3>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" id="businessHoursEnabled">
+                                <span>Enable business hours automation</span>
+                            </label>
+                        </div>
+                        
+                        <div id="businessHoursSettings" style="display: none;">
+                            <div style="margin-bottom: 16px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 500;">Timezone</label>
+                                <select id="widgetTimezone" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <option value="UTC">UTC</option>
+                                    <option value="America/New_York">Eastern Time (GMT-5)</option>
+                                    <option value="America/Chicago">Central Time (GMT-6)</option>
+                                    <option value="America/Denver">Mountain Time (GMT-7)</option>
+                                    <option value="America/Los_Angeles">Pacific Time (GMT-8)</option>
+                                    <option value="Europe/London">London Time (GMT+0)</option>
+                                    <option value="Europe/Paris">Paris Time (GMT+1)</option>
+                                    <option value="Asia/Dubai">Dubai Time (GMT+4)</option>
+                                    <option value="Asia/Riyadh">Riyadh Time (GMT+3)</option>
+                                    <option value="Asia/Tokyo">Tokyo Time (GMT+9)</option>
+                                    <option value="Australia/Sydney">Sydney Time (GMT+11)</option>
+                                </select>
+                            </div>
+                            
+                            <div style="margin-bottom: 16px;">
+                                <h4 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 600;">Weekly Schedule</h4>
+                                <div id="businessHoursSchedule" style="border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;">
+                                    <!-- Monday -->
+                                    <div style="display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #e0e0e0; background: #fafafa;">
+                                        <div style="flex: 0 0 80px; font-weight: 500;">Monday</div>
+                                        <label style="flex: 0 0 auto; margin-right: 12px; display: flex; align-items: center; gap: 6px;">
+                                            <input type="checkbox" id="monday_closed">
+                                            <span style="font-size: 13px;">Closed</span>
+                                        </label>
+                                        <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                                            <input type="time" id="monday_start" value="09:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                            <span style="color: #666;">to</span>
+                                            <input type="time" id="monday_end" value="17:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Tuesday -->
+                                    <div style="display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #e0e0e0;">
+                                        <div style="flex: 0 0 80px; font-weight: 500;">Tuesday</div>
+                                        <label style="flex: 0 0 auto; margin-right: 12px; display: flex; align-items: center; gap: 6px;">
+                                            <input type="checkbox" id="tuesday_closed">
+                                            <span style="font-size: 13px;">Closed</span>
+                                        </label>
+                                        <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                                            <input type="time" id="tuesday_start" value="09:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                            <span style="color: #666;">to</span>
+                                            <input type="time" id="tuesday_end" value="17:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Wednesday -->
+                                    <div style="display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #e0e0e0; background: #fafafa;">
+                                        <div style="flex: 0 0 80px; font-weight: 500;">Wednesday</div>
+                                        <label style="flex: 0 0 auto; margin-right: 12px; display: flex; align-items: center; gap: 6px;">
+                                            <input type="checkbox" id="wednesday_closed">
+                                            <span style="font-size: 13px;">Closed</span>
+                                        </label>
+                                        <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                                            <input type="time" id="wednesday_start" value="09:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                            <span style="color: #666;">to</span>
+                                            <input type="time" id="wednesday_end" value="17:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Thursday -->
+                                    <div style="display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #e0e0e0;">
+                                        <div style="flex: 0 0 80px; font-weight: 500;">Thursday</div>
+                                        <label style="flex: 0 0 auto; margin-right: 12px; display: flex; align-items: center; gap: 6px;">
+                                            <input type="checkbox" id="thursday_closed">
+                                            <span style="font-size: 13px;">Closed</span>
+                                        </label>
+                                        <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                                            <input type="time" id="thursday_start" value="09:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                            <span style="color: #666;">to</span>
+                                            <input type="time" id="thursday_end" value="17:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Friday -->
+                                    <div style="display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #e0e0e0; background: #fafafa;">
+                                        <div style="flex: 0 0 80px; font-weight: 500;">Friday</div>
+                                        <label style="flex: 0 0 auto; margin-right: 12px; display: flex; align-items: center; gap: 6px;">
+                                            <input type="checkbox" id="friday_closed">
+                                            <span style="font-size: 13px;">Closed</span>
+                                        </label>
+                                        <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                                            <input type="time" id="friday_start" value="09:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                            <span style="color: #666;">to</span>
+                                            <input type="time" id="friday_end" value="17:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Saturday -->
+                                    <div style="display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #e0e0e0;">
+                                        <div style="flex: 0 0 80px; font-weight: 500;">Saturday</div>
+                                        <label style="flex: 0 0 auto; margin-right: 12px; display: flex; align-items: center; gap: 6px;">
+                                            <input type="checkbox" id="saturday_closed">
+                                            <span style="font-size: 13px;">Closed</span>
+                                        </label>
+                                        <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                                            <input type="time" id="saturday_start" value="10:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                            <span style="color: #666;">to</span>
+                                            <input type="time" id="saturday_end" value="14:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Sunday -->
+                                    <div style="display: flex; align-items: center; padding: 12px;">
+                                        <div style="flex: 0 0 80px; font-weight: 500;">Sunday</div>
+                                        <label style="flex: 0 0 auto; margin-right: 12px; display: flex; align-items: center; gap: 6px;">
+                                            <input type="checkbox" id="sunday_closed" checked>
+                                            <span style="font-size: 13px;">Closed</span>
+                                        </label>
+                                        <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                                            <input type="time" id="sunday_start" value="10:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;" disabled>
+                                            <span style="color: #666;">to</span>
+                                            <input type="time" id="sunday_end" value="14:00" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;" disabled>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 500;">Closed Message</label>
+                                <textarea id="widgetClosedMessage" placeholder="We're currently closed. Our business hours are Monday-Friday 9AM-5PM." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 60px; resize: vertical;"></textarea>
+                            </div>
+                        </div>
+                        
+                        <h3 style="margin: 20px 0 16px 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="ri-notification-3-line"></i>
+                            Smart Popups
+                        </h3>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" id="popupTriggersEnabled">
+                                <span>Enable smart popup triggers</span>
+                            </label>
+                        </div>
+                        
+                        <div id="popupSettings" style="display: none;">
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 500;">Show after (seconds)</label>
+                                <input type="number" id="popupDelay" value="5" min="0" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                            
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                    <input type="checkbox" id="popupExitIntent">
+                                    <span>Show on exit intent</span>
+                                </label>
+                            </div>
+                            
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; margin-bottom: 6px; font-weight: 500;">Show after scroll (%)</label>
+                                <input type="number" id="popupScrollPercent" value="50" min="0" max="100" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Widget Preview and Installation -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <div style="background: var(--background); padding: 24px; border-radius: var(--radius);">
+                        <h3 style="margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="ri-eye-line"></i>
+                            Live Preview
+                        </h3>
+                        
+                        <div id="widgetPreview" style="background: #f5f5f5; border-radius: 8px; padding: 40px; min-height: 300px; position: relative; overflow: hidden;">
+                            <div style="position: absolute; top: 8px; left: 8px; font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 1px;">Preview</div>
+                            <div id="previewWidget" style="position: absolute; bottom: 20px; right: 20px;"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--background); padding: 24px; border-radius: var(--radius);">
+                        <h3 style="margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+                            <i class="ri-rocket-line"></i>
+                            Installation Options
+                        </h3>
+                        
+                        <!-- Automatic Installation -->
+                        <div style="background: linear-gradient(135deg, #25D366, #20b858); padding: 16px; border-radius: 8px; color: white; margin-bottom: 20px;">
+                            <h4 style="margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px;">
+                                <i class="ri-magic-line"></i>
+                                Automatic Installation (Recommended)
+                            </h4>
+                            <p style="margin: 0 0 12px 0; opacity: 0.9; font-size: 14px;">Install the widget automatically to your store with one click. No code editing required!</p>
+                            <button id="autoInstallBtn" onclick="automaticInstall()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                                <i class="ri-download-cloud-line"></i>
+                                Install Widget Automatically
+                            </button>
+                        </div>
+                        
+                        <!-- Installation Status -->
+                        <div id="installationStatus" style="display: none; padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+                            <div id="installationMessage" style="display: flex; align-items: center; gap: 8px;"></div>
+                        </div>
+                        
+                        <!-- Manual Installation -->
+                        <div style="border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;">
+                            <div style="background: #f8f9fa; padding: 12px; border-bottom: 1px solid #e0e0e0;">
+                                <h4 style="margin: 0; font-size: 14px; color: #666;">Manual Installation (Alternative)</h4>
+                            </div>
+                            <div style="padding: 16px;">
+                                <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 14px;">For advanced users: Add this code to your theme's theme.liquid file before the closing &lt;/body&gt; tag:</p>
+                                
+                                <div style="background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px; font-family: monospace; font-size: 11px; position: relative; max-height: 150px; overflow-y: auto;">
+                                    <button onclick="copyWidgetCode()" style="position: absolute; top: 8px; right: 8px; background: #25D366; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; z-index: 1;">Copy</button>
+                                    <pre id="widgetEmbedCode" style="margin: 0; white-space: pre-wrap; word-wrap: break-word; padding-right: 60px;">Loading embed code...</pre>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 12px; margin-top: 16px;">
+                            <button class="btn btn-secondary" onclick="window.open('/public/whatsapp-widget-setup.html', '_blank')" style="flex: 1;">
+                                <i class="ri-external-link-line"></i>
+                                Setup Guide
+                            </button>
+                            <button class="btn btn-success" onclick="testWidgetOnStore()" style="flex: 1;">
+                                <i class="ri-eye-line"></i>
+                                Test on Store
+                            </button>
+                            <button id="uninstallBtn" onclick="removeWidget()" style="background: #dc3545; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; display: none;">
+                                <i class="ri-delete-bin-line"></i>
+                                Remove Widget
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                    <button class="btn btn-secondary" onclick="resetWidgetSettings()">
+                        <i class="ri-refresh-line"></i>
+                        Reset to Defaults
+                    </button>
+                    <button class="btn btn-primary" onclick="saveWidgetSettings()">
+                        <i class="ri-save-line"></i>
+                        Save Widget Settings
+                    </button>
+                </div>
+            </div>
+            
             <div id="settings" class="tab-content">
                 <h2 style="margin-bottom: 20px;">General Settings</h2>
                 
@@ -1992,6 +2311,8 @@ function sendWhatsAppTest() {
                 loadMessageStats();
             } else if (tabName === 'analytics') {
                 loadRealStats();
+            } else if (tabName === 'widget') {
+                initializeWidgetTab();
             }
         }
         
@@ -2920,6 +3241,508 @@ function sendWhatsAppTest() {
         function saveSettings() {
             showToast('Settings saved successfully!', 'success');
             // In production, gather all settings and save to backend
+        }
+        
+        // WhatsApp Widget Functions
+        let previewWidget = null;
+        
+        // Initialize widget tab functionality
+        function initializeWidgetTab() {
+            // Color picker sync
+            document.getElementById('widgetBgColor').addEventListener('input', function() {
+                document.getElementById('widgetBgColorText').value = this.value;
+                updateWidgetPreview();
+            });
+            
+            document.getElementById('widgetTextColor').addEventListener('input', function() {
+                document.getElementById('widgetTextColorText').value = this.value;
+                updateWidgetPreview();
+            });
+            
+            document.getElementById('widgetBgColorText').addEventListener('input', function() {
+                document.getElementById('widgetBgColor').value = this.value;
+                updateWidgetPreview();
+            });
+            
+            document.getElementById('widgetTextColorText').addEventListener('input', function() {
+                document.getElementById('widgetTextColor').value = this.value;
+                updateWidgetPreview();
+            });
+            
+            // Business hours toggle
+            document.getElementById('businessHoursEnabled').addEventListener('change', function() {
+                document.getElementById('businessHoursSettings').style.display = this.checked ? 'block' : 'none';
+                updateWidgetPreview();
+            });
+            
+            // Popup triggers toggle
+            document.getElementById('popupTriggersEnabled').addEventListener('change', function() {
+                document.getElementById('popupSettings').style.display = this.checked ? 'block' : 'none';
+                updateWidgetPreview();
+            });
+            
+            // Business hours day toggles
+            const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            days.forEach(day => {
+                const closedCheckbox = document.getElementById(day + '_closed');
+                const startTime = document.getElementById(day + '_start');
+                const endTime = document.getElementById(day + '_end');
+                
+                if (closedCheckbox && startTime && endTime) {
+                    closedCheckbox.addEventListener('change', function() {
+                        startTime.disabled = this.checked;
+                        endTime.disabled = this.checked;
+                        if (this.checked) {
+                            startTime.style.opacity = '0.5';
+                            endTime.style.opacity = '0.5';
+                        } else {
+                            startTime.style.opacity = '1';
+                            endTime.style.opacity = '1';
+                        }
+                        updateWidgetPreview();
+                    });
+                    
+                    startTime.addEventListener('change', updateWidgetPreview);
+                    endTime.addEventListener('change', updateWidgetPreview);
+                }
+            });
+            
+            // Update preview on any input change
+            const inputs = ['widgetPhone', 'widgetMessage', 'widgetButtonText', 'widgetPosition', 'widgetBgColorText', 'widgetTextColorText'];
+            inputs.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('input', updateWidgetPreview);
+                    element.addEventListener('change', updateWidgetPreview);
+                }
+            });
+            
+            loadWidgetSettings();
+            loadWidgetEmbedCode();
+            checkInstallationStatus();
+        }
+        
+        // Update widget preview
+        function updateWidgetPreview() {
+            const previewContainer = document.getElementById('previewWidget');
+            if (!previewContainer) return;
+            
+            const phone = document.getElementById('widgetPhone').value || '+1234567890';
+            const message = document.getElementById('widgetMessage').value || 'Hello! I\'m interested in your products.';
+            const buttonText = document.getElementById('widgetButtonText').value || 'Chat with us';
+            const bgColor = document.getElementById('widgetBgColorText').value || '#25D366';
+            const textColor = document.getElementById('widgetTextColorText').value || '#ffffff';
+            
+            previewContainer.innerHTML = `
+                <div style="
+                    width: 60px;
+                    height: 60px;
+                    border-radius: 50%;
+                    background-color: ${bgColor};
+                    color: ${textColor};
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                    <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                    </svg>
+                </div>
+            `;
+        }
+        
+        // Load widget settings from API
+        async function loadWidgetSettings() {
+            try {
+                const sessionToken = getSessionToken();
+                const response = await fetch('/api/whatsapp/settings', {
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`
+                    }
+                });
+                const settings = await response.json();
+                
+                if (settings.phone_number) {
+                    document.getElementById('widgetPhone').value = settings.phone_number;
+                }
+                if (settings.default_message) {
+                    document.getElementById('widgetMessage').value = settings.default_message;
+                }
+                if (settings.button_text) {
+                    document.getElementById('widgetButtonText').value = settings.button_text;
+                }
+                if (settings.position) {
+                    document.getElementById('widgetPosition').value = settings.position;
+                }
+                if (settings.background_color) {
+                    document.getElementById('widgetBgColor').value = settings.background_color;
+                    document.getElementById('widgetBgColorText').value = settings.background_color;
+                }
+                if (settings.text_color) {
+                    document.getElementById('widgetTextColor').value = settings.text_color;
+                    document.getElementById('widgetTextColorText').value = settings.text_color;
+                }
+                if (settings.business_hours_enabled) {
+                    document.getElementById('businessHoursEnabled').checked = settings.business_hours_enabled;
+                    document.getElementById('businessHoursSettings').style.display = 'block';
+                }
+                if (settings.business_hours_timezone) {
+                    document.getElementById('widgetTimezone').value = settings.business_hours_timezone;
+                }
+                if (settings.closed_message) {
+                    document.getElementById('widgetClosedMessage').value = settings.closed_message;
+                }
+                
+                // Load business hours schedule
+                if (settings.business_hours_schedule) {
+                    const schedule = typeof settings.business_hours_schedule === 'string' 
+                        ? JSON.parse(settings.business_hours_schedule) 
+                        : settings.business_hours_schedule;
+                    
+                    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                    days.forEach(day => {
+                        if (schedule[day]) {
+                            const closedCheckbox = document.getElementById(day + '_closed');
+                            const startTime = document.getElementById(day + '_start');
+                            const endTime = document.getElementById(day + '_end');
+                            
+                            if (schedule[day].closed) {
+                                closedCheckbox.checked = true;
+                                startTime.disabled = true;
+                                endTime.disabled = true;
+                                startTime.style.opacity = '0.5';
+                                endTime.style.opacity = '0.5';
+                            } else {
+                                closedCheckbox.checked = false;
+                                if (schedule[day].start) startTime.value = schedule[day].start;
+                                if (schedule[day].end) endTime.value = schedule[day].end;
+                                startTime.disabled = false;
+                                endTime.disabled = false;
+                                startTime.style.opacity = '1';
+                                endTime.style.opacity = '1';
+                            }
+                        }
+                    });
+                }
+                
+                if (settings.popup_triggers_enabled) {
+                    document.getElementById('popupTriggersEnabled').checked = settings.popup_triggers_enabled;
+                    document.getElementById('popupSettings').style.display = 'block';
+                }
+                if (settings.popup_delay) {
+                    document.getElementById('popupDelay').value = Math.floor(settings.popup_delay / 1000);
+                }
+                if (settings.popup_exit_intent !== undefined) {
+                    document.getElementById('popupExitIntent').checked = settings.popup_exit_intent;
+                }
+                if (settings.popup_scroll_percentage) {
+                    document.getElementById('popupScrollPercent').value = settings.popup_scroll_percentage;
+                }
+                
+                updateWidgetPreview();
+            } catch (error) {
+                console.error('Failed to load widget settings:', error);
+            }
+        }
+        
+        // Load widget embed code
+        async function loadWidgetEmbedCode() {
+            try {
+                const sessionToken = getSessionToken();
+                const response = await fetch('/api/whatsapp/embed-code', {
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.embedCode) {
+                    document.getElementById('widgetEmbedCode').textContent = data.embedCode;
+                }
+            } catch (error) {
+                console.error('Failed to load embed code:', error);
+                document.getElementById('widgetEmbedCode').textContent = 'Error loading embed code. Please try again.';
+            }
+        }
+        
+        // Save widget settings
+        async function saveWidgetSettings() {
+            try {
+                // Validate phone number first
+                const phoneNumber = document.getElementById('widgetPhone').value;
+                if (!phoneNumber || phoneNumber.trim() === '') {
+                    showToast('Please enter your WhatsApp phone number first!', 'error');
+                    return false;
+                }
+                
+                // Collect business hours schedule
+                const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                const schedule = {};
+                
+                days.forEach(day => {
+                    const closedCheckbox = document.getElementById(day + '_closed');
+                    const startTime = document.getElementById(day + '_start');
+                    const endTime = document.getElementById(day + '_end');
+                    
+                    if (closedCheckbox && startTime && endTime) {
+                        schedule[day] = {
+                            closed: closedCheckbox.checked,
+                            start: startTime.value,
+                            end: endTime.value
+                        };
+                    }
+                });
+                
+                const settings = {
+                    phoneNumber: phoneNumber,
+                    defaultMessage: document.getElementById('widgetMessage').value || 'Hello! I\'m interested in your products.',
+                    buttonText: document.getElementById('widgetButtonText').value || 'Chat with us',
+                    position: document.getElementById('widgetPosition').value || 'bottom-right',
+                    backgroundColor: document.getElementById('widgetBgColorText').value || '#25D366',
+                    textColor: document.getElementById('widgetTextColorText').value || '#ffffff',
+                    businessHours: {
+                        enabled: document.getElementById('businessHoursEnabled').checked,
+                        timezone: document.getElementById('widgetTimezone').value || 'UTC',
+                        schedule: schedule,
+                        closedMessage: document.getElementById('widgetClosedMessage').value || ''
+                    },
+                    popupTriggers: {
+                        enabled: document.getElementById('popupTriggersEnabled').checked,
+                        delay: parseInt(document.getElementById('popupDelay').value || 5) * 1000,
+                        exitIntent: document.getElementById('popupExitIntent').checked,
+                        scrollPercentage: parseInt(document.getElementById('popupScrollPercent').value || 50)
+                    }
+                };
+                
+                console.log('Saving widget settings:', settings);
+                
+                const sessionToken = getSessionToken();
+                const response = await fetch('/api/whatsapp/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionToken}`
+                    },
+                    body: JSON.stringify(settings)
+                });
+                
+                const result = await response.json();
+                console.log('Save response:', result);
+                
+                if (result.success) {
+                    showToast('Widget settings saved successfully!', 'success');
+                    loadWidgetEmbedCode(); // Refresh embed code
+                    return true;
+                } else {
+                    showToast('Error saving widget settings: ' + (result.error || 'Unknown error'), 'error');
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error saving widget settings:', error);
+                showToast('Error saving widget settings: ' + error.message, 'error');
+                return false;
+            }
+        }
+        
+        // Reset widget settings to defaults
+        function resetWidgetSettings() {
+            if (confirm('Are you sure you want to reset all widget settings to defaults?')) {
+                document.getElementById('widgetPhone').value = '';
+                document.getElementById('widgetMessage').value = 'Hello! I\'m interested in your products.';
+                document.getElementById('widgetButtonText').value = 'Chat with us';
+                document.getElementById('widgetPosition').value = 'bottom-right';
+                document.getElementById('widgetBgColor').value = '#25D366';
+                document.getElementById('widgetBgColorText').value = '#25D366';
+                document.getElementById('widgetTextColor').value = '#ffffff';
+                document.getElementById('widgetTextColorText').value = '#ffffff';
+                document.getElementById('businessHoursEnabled').checked = false;
+                document.getElementById('businessHoursSettings').style.display = 'none';
+                document.getElementById('popupTriggersEnabled').checked = false;
+                document.getElementById('popupSettings').style.display = 'none';
+                document.getElementById('popupDelay').value = 5;
+                document.getElementById('popupScrollPercent').value = 50;
+                document.getElementById('popupExitIntent').checked = false;
+                document.getElementById('widgetClosedMessage').value = '';
+                
+                updateWidgetPreview();
+                showToast('Widget settings reset to defaults', 'info');
+            }
+        }
+        
+        // Copy widget embed code
+        function copyWidgetCode() {
+            const code = document.getElementById('widgetEmbedCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                showToast('Embed code copied to clipboard!', 'success');
+            }).catch(() => {
+                showToast('Failed to copy code. Please select and copy manually.', 'error');
+            });
+        }
+        
+        // Test widget on store
+        function testWidgetOnStore() {
+            const shopDomain = getCurrentShop();
+            if (shopDomain) {
+                window.open(`https://${shopDomain}`, '_blank');
+                showToast('Opening your store in a new tab. Look for the WhatsApp widget!', 'info');
+            } else {
+                showToast('Unable to determine store URL', 'error');
+            }
+        }
+        
+        // Check installation status
+        async function checkInstallationStatus() {
+            try {
+                const sessionToken = getSessionToken();
+                const response = await fetch('/api/whatsapp/installation-status', {
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.installed) {
+                    showInstallationStatus('success', 'Widget is installed and active on your store!');
+                    document.getElementById('autoInstallBtn').style.display = 'none';
+                    document.getElementById('uninstallBtn').style.display = 'inline-block';
+                } else {
+                    showInstallationStatus('info', 'Widget is not yet installed on your store.');
+                    document.getElementById('autoInstallBtn').style.display = 'inline-block';
+                    document.getElementById('uninstallBtn').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Failed to check installation status:', error);
+            }
+        }
+        
+        // Show installation status message
+        function showInstallationStatus(type, message) {
+            const statusDiv = document.getElementById('installationStatus');
+            const messageDiv = document.getElementById('installationMessage');
+            
+            let icon = '';
+            let bgColor = '';
+            
+            switch (type) {
+                case 'success':
+                    icon = '<i class="ri-check-line"></i>';
+                    bgColor = '#d4edda';
+                    break;
+                case 'error':
+                    icon = '<i class="ri-error-warning-line"></i>';
+                    bgColor = '#f8d7da';
+                    break;
+                case 'loading':
+                    icon = '<i class="ri-loader-4-line" style="animation: spin 1s linear infinite;"></i>';
+                    bgColor = '#fff3cd';
+                    break;
+                default:
+                    icon = '<i class="ri-information-line"></i>';
+                    bgColor = '#d1ecf1';
+            }
+            
+            statusDiv.style.display = 'block';
+            statusDiv.style.backgroundColor = bgColor;
+            messageDiv.innerHTML = `${icon} <span>${message}</span>`;
+        }
+        
+        // Hide installation status
+        function hideInstallationStatus() {
+            document.getElementById('installationStatus').style.display = 'none';
+        }
+        
+        // Automatic installation using Shopify Script Tags
+        async function automaticInstall() {
+            const phoneNumber = document.getElementById('widgetPhone').value;
+            
+            if (!phoneNumber) {
+                showToast('Please enter your WhatsApp phone number first!', 'error');
+                return;
+            }
+            
+            showInstallationStatus('loading', 'Saving settings and installing widget...');
+            document.getElementById('autoInstallBtn').disabled = true;
+            
+            try {
+                // First save the current settings
+                console.log('Step 1: Saving widget settings...');
+                const settingsSaved = await saveWidgetSettings();
+                
+                if (!settingsSaved) {
+                    showInstallationStatus('error', 'Failed to save widget settings. Please check your configuration.');
+                    return;
+                }
+                
+                console.log('Step 2: Installing via Script Tag API...');
+                showInstallationStatus('loading', 'Installing widget on your store...');
+                
+                // Then install via Script Tag API
+                const sessionToken = getSessionToken();
+                const response = await fetch('/api/whatsapp/install', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionToken}`
+                    }
+                });
+                
+                const result = await response.json();
+                console.log('Installation result:', result);
+                
+                if (result.success) {
+                    showInstallationStatus('success', 'Widget successfully installed on your store! It may take a few minutes to appear.');
+                    document.getElementById('autoInstallBtn').style.display = 'none';
+                    document.getElementById('uninstallBtn').style.display = 'inline-block';
+                    showToast('Widget installed successfully!', 'success');
+                } else {
+                    showInstallationStatus('error', 'Installation failed: ' + (result.error || 'Unknown error'));
+                    showToast('Installation failed: ' + (result.error || 'Please try the manual method.'), 'error');
+                }
+            } catch (error) {
+                console.error('Installation failed:', error);
+                showInstallationStatus('error', 'Installation failed: ' + error.message);
+                showToast('Installation failed: ' + error.message, 'error');
+            } finally {
+                document.getElementById('autoInstallBtn').disabled = false;
+            }
+        }
+        
+        // Remove widget from store
+        async function removeWidget() {
+            if (!confirm('Are you sure you want to remove the WhatsApp widget from your store?')) {
+                return;
+            }
+            
+            showInstallationStatus('loading', 'Removing widget from your store...');
+            
+            try {
+                const sessionToken = getSessionToken();
+                const response = await fetch('/api/whatsapp/uninstall', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${sessionToken}`
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showInstallationStatus('info', 'Widget successfully removed from your store.');
+                    document.getElementById('autoInstallBtn').style.display = 'inline-block';
+                    document.getElementById('uninstallBtn').style.display = 'none';
+                    showToast('Widget removed successfully!', 'success');
+                } else {
+                    showInstallationStatus('error', 'Failed to remove widget: ' + (result.error || 'Unknown error'));
+                    showToast('Failed to remove widget. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to remove widget:', error);
+                showInstallationStatus('error', 'Failed to remove widget. Please try again.');
+                showToast('Failed to remove widget. Please try again.', 'error');
+            }
         }
         
         // Load real stats on page load

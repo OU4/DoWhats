@@ -598,7 +598,7 @@ app.get('/ngrok-test', (req, res) => {
       <h3>🔧 Next Steps:</h3>
       <ol>
         <li>If you see a warning page before this, ngrok needs configuration</li>
-        <li>Try accessing this URL directly: <code>https://f44d8241da37.ngrok-free.app/ngrok-test</code></li>
+        <li>Try accessing this URL directly: <code>https://e0ddcf4cdacd.ngrok-free.app/ngrok-test</code></li>
         <li>Then test OAuth: <a href="/auth?shop=dowhatss1.myshopify.com">Start OAuth Flow</a></li>
       </ol>
       
